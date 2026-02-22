@@ -1344,6 +1344,121 @@ def render_advisor_panel(conn: sqlite3.Connection, advisor_name: str, roster: pd
         summary_df = summary_df.sort_values(["Tamamlanma %", "Geciken Gorev"], ascending=[False, True])
         st.dataframe(summary_df, use_container_width=True, hide_index=True)
 
+    st.markdown("### Ogrenci arama ve bireysel takip")
+    search_query = st.text_input(
+        "Ogrenci adi veya numarasi ile arayiniz",
+        key="advisor_student_search",
+        placeholder="Ornek: Ali Veli veya 2001234567",
+    )
+    if search_query.strip():
+        q = search_query.strip().lower()
+        matches = roster[
+            roster["student_name"].str.lower().str.contains(q, na=False)
+            | roster["student_no"].str.contains(q, na=False)
+        ]
+        if matches.empty:
+            st.warning(f"\"{search_query}\" ile eslesen ogrenci bulunamadi.")
+        else:
+            unique_students = matches[["student_no", "student_name"]].drop_duplicates()
+            if len(unique_students) > 1:
+                pick_options = {
+                    f"{r['student_name']} ({r['student_no']})": str(r["student_no"])
+                    for _, r in unique_students.iterrows()
+                }
+                picked = st.selectbox("Birden fazla sonuc bulundu, secin", list(pick_options.keys()), key="search_pick")
+                picked_no = pick_options[picked]
+            else:
+                picked_no = str(unique_students.iloc[0]["student_no"])
+
+            stu_rows = roster[roster["student_no"] == picked_no]
+            if stu_rows.empty:
+                st.error("Ogrenci kaydi bulunamadi.")
+            else:
+                stu_info = stu_rows.iloc[0]
+                stu_name = str(stu_info["student_name"])
+                stu_project = str(stu_info["project_name"])
+
+                st.markdown(f"---")
+                st.markdown(f"#### {stu_name} ({picked_no})")
+
+                c1, c2 = st.columns(2)
+                c1.markdown(f"**Proje:** {stu_project}")
+                c2.markdown(f"**Program:** {stu_info.get('program', '-')}")
+
+                leader_no = get_leader(conn, stu_project)
+                is_stu_leader = (leader_no == picked_no)
+                team = roster[roster["project_name"] == stu_project].sort_values("row_no")
+                role_df = fetch_df(
+                    conn,
+                    "SELECT student_no, role, responsibility FROM member_roles WHERE project_name = ?",
+                    (stu_project,),
+                )
+                stu_role_row = role_df[role_df["student_no"] == picked_no]
+                stu_role = str(stu_role_row.iloc[0]["role"]) if not stu_role_row.empty else "Atanmadi"
+                stu_resp = str(stu_role_row.iloc[0]["responsibility"]) if not stu_role_row.empty else "-"
+
+                c3, c4 = st.columns(2)
+                c3.markdown(f"**Rol:** {stu_role} {'(Lider)' if is_stu_leader else ''}")
+                c4.markdown(f"**Gorevi:** {stu_resp}")
+
+                st.markdown("**Takim Arkadaşları:**")
+                team_labels = [
+                    f"{'👑 ' if get_leader(conn, stu_project) == str(r['student_no']) else ''}{r['student_name']} ({r['student_no']})"
+                    for _, r in team.iterrows()
+                ]
+                st.caption(" | ".join(team_labels))
+
+                stu_tasks = fetch_tasks(conn, stu_project)
+                my_tasks = stu_tasks[stu_tasks["assignee_student_no"] == picked_no]
+
+                c5, c6, c7 = st.columns(3)
+                c5.metric("Atanan Gorev", len(my_tasks))
+                c6.metric("Tamamlanan", int((my_tasks["status"] == "DONE").sum()) if not my_tasks.empty else 0)
+                c7.metric("Ilerleme", f"%{completion_percent(my_tasks)}")
+
+                if not my_tasks.empty:
+                    st.markdown("**Gorev Durumu (Milestone Bazli):**")
+                    task_table = my_tasks.copy()
+                    task_table["Milestone"] = task_table["milestone_key"].map(MILESTONE_LABELS)
+                    task_table["Durum"] = task_table["status"].map(status_tr)
+                    task_table["Deadline"] = task_table["deadline"].replace("", "-").fillna("-")
+                    st.dataframe(
+                        task_table[["id", "Milestone", "title", "Durum", "priority", "Deadline", "evidence_link"]].rename(columns={
+                            "id": "ID", "title": "Gorev", "priority": "Oncelik", "evidence_link": "Kanit",
+                        }),
+                        use_container_width=True, hide_index=True,
+                    )
+                    for _, t in my_tasks.iterrows():
+                        ef = str(t.get("evidence_file", "") or "")
+                        if ef:
+                            with st.expander(f"Kanit dosyasi: #{int(t['id'])} - {t['title']}"):
+                                render_evidence_file(ef)
+                else:
+                    st.info("Bu ogrenciye atanmis gorev yok.")
+
+                stu_weekly = fetch_weekly_updates_for_project(conn, stu_project, picked_no)
+                if not stu_weekly.empty:
+                    st.markdown("**Haftalik Giris Gecmisi:**")
+                    st.dataframe(
+                        stu_weekly[["week_start", "completed", "blockers", "next_step", "evidence_link", "created_at"]].rename(columns={
+                            "week_start": "Hafta", "completed": "Yapilanlar", "blockers": "Engeller",
+                            "next_step": "Sonraki Adim", "evidence_link": "Kanit", "created_at": "Tarih",
+                        }),
+                        use_container_width=True, hide_index=True,
+                    )
+                else:
+                    st.caption("Henuz haftalik giris yapilmamis.")
+
+                stu_fb = fetch_feedbacks(conn, stu_project)
+                if not stu_fb.empty:
+                    st.markdown("**Projeye Verilen Geri Bildirimler:**")
+                    for _, fb in stu_fb.iterrows():
+                        is_rev = bool(int(fb["revision_required"])) if fb["revision_required"] else False
+                        icon = "\U0001f534" if is_rev else "\U0001f4ac"
+                        st.caption(f"{icon} {str(fb['created_at'])[:10]} - {fb['feedback'][:80]}{'...' if len(str(fb['feedback'])) > 80 else ''}")
+
+                st.markdown("---")
+
     st.markdown("### Proje lideri atama")
     project_name = st.selectbox("Proje", projects, key="advisor_project_pick")
     members = roster[roster["project_name"] == project_name].sort_values("row_no")
