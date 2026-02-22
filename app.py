@@ -2151,8 +2151,79 @@ def enforce_password_change(conn: sqlite3.Connection, auth_user: dict) -> bool:
 
 
 def main() -> None:
-    st.set_page_config(page_title="Bitirme Proje Takip", layout="wide")
-    st.title("Bitirme Proje Takip Uygulamasi")
+    st.set_page_config(
+        page_title="Bitirme Proje Takip | OSTİM Teknik Üniversitesi",
+        page_icon="🎓",
+        layout="wide",
+    )
+
+    # ── Sabit üst logo bandı ────────────────────────────────────────────────
+    st.markdown(
+        """
+        <style>
+        /* Üst logo şeridi */
+        .otu-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 999999;
+            background: linear-gradient(90deg, #0a2342 0%, #1a3a6b 60%, #0f4c81 100%);
+            padding: 0.55rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+        }
+        .otu-header .otu-icon {
+            font-size: 1.55rem;
+            line-height: 1;
+        }
+        .otu-header .otu-text-block {
+            display: flex;
+            flex-direction: column;
+            line-height: 1.2;
+        }
+        .otu-header .otu-uni {
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: #ffd700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+        .otu-header .otu-dept {
+            font-size: 0.72rem;
+            font-weight: 500;
+            color: #cce0ff;
+            letter-spacing: 0.02em;
+        }
+        .otu-header .otu-divider {
+            margin-left: auto;
+            font-size: 0.70rem;
+            color: #7ab3e0;
+            font-style: italic;
+        }
+        /* Streamlit içeriğini logo bandının altına it */
+        [data-testid="stAppViewContainer"] > section:first-child {
+            padding-top: 3.4rem !important;
+        }
+        [data-testid="stHeader"] {
+            top: 2.8rem !important;
+        }
+        </style>
+        <div class="otu-header">
+            <span class="otu-icon">🎓</span>
+            <div class="otu-text-block">
+                <span class="otu-uni">OSTİM Teknik Üniversitesi</span>
+                <span class="otu-dept">Yazılım Mühendisliği Bölümü</span>
+            </div>
+            <span class="otu-divider">Bitirme Proje Takip Sistemi</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.title("🗂️ Bitirme Proje Takip Uygulaması")
 
     db_path = "project_tracker.db"
     with st.sidebar:
