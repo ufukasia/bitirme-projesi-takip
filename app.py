@@ -13,6 +13,9 @@ from typing import Dict, Iterable, Optional
 import pandas as pd
 import streamlit as st
 
+UPLOADS_DIR = Path("uploads")
+UPLOADS_DIR.mkdir(exist_ok=True)
+
 DEFAULT_ADVISOR = "Dr. UFUK ASIL"
 DEFAULT_PASSWORD = "12345"
 MIN_PASSWORD_LEN = 6
@@ -286,6 +289,7 @@ def init_db(conn: sqlite3.Connection) -> None:
             dependency_task_id INTEGER,
             evidence_required TEXT,
             evidence_link TEXT,
+            evidence_file TEXT,
             created_by TEXT NOT NULL,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
@@ -330,6 +334,11 @@ def init_db(conn: sqlite3.Connection) -> None:
     )
     conn.commit()
     ensure_students_schema(conn)
+    try:
+        conn.execute("""ALTER TABLE tasks ADD COLUMN evidence_file TEXT DEFAULT ''""")
+        conn.commit()
+    except Exception:
+        pass
 
 
 _db_lock = threading.Lock()
@@ -882,6 +891,7 @@ def update_task(
     status: str,
     evidence_link: str,
     skip_milestone_check: bool = False,
+    evidence_file: str = "",
 ) -> tuple[bool, str]:
     row = conn.execute(
         "SELECT status, project_name, milestone_key, assignee_student_no FROM tasks WHERE id = ?",
@@ -898,8 +908,11 @@ def update_task(
             False,
             f"Durum gecisi gecersiz: {status_tr(current_status)} -> {status_tr(target_status)}",
         )
-    if target_status == "DONE" and not evidence_link.strip():
-        return False, "TAMAMLANDI durumuna gecmek icin kanit linki zorunludur."
+
+    existing_file = conn.execute("SELECT evidence_file FROM tasks WHERE id = ?", (task_id,)).fetchone()
+    has_file = bool(evidence_file) or bool(existing_file and existing_file["evidence_file"])
+    if target_status == "DONE" and not evidence_link.strip() and not has_file:
+        return False, "TAMAMLANDI durumuna gecmek icin kanit linki veya dosya zorunludur."
 
     if not skip_milestone_check and target_status in ("DOING", "DONE"):
         task_milestone = str(row["milestone_key"])
@@ -926,10 +939,16 @@ def update_task(
                         f"Onceki milestone tamamlanmadan bu goreve gecilemez. Tamamlanmamis: {prev_label}",
                     )
 
-    conn.execute(
-        "UPDATE tasks SET status = ?, evidence_link = ?, updated_at = ? WHERE id = ?",
-        (target_status, evidence_link.strip(), now_ts(), task_id),
-    )
+    if evidence_file:
+        conn.execute(
+            "UPDATE tasks SET status = ?, evidence_link = ?, evidence_file = ?, updated_at = ? WHERE id = ?",
+            (target_status, evidence_link.strip(), evidence_file, now_ts(), task_id),
+        )
+    else:
+        conn.execute(
+            "UPDATE tasks SET status = ?, evidence_link = ?, updated_at = ? WHERE id = ?",
+            (target_status, evidence_link.strip(), now_ts(), task_id),
+        )
     conn.commit()
     return True, "ok"
 
@@ -993,13 +1012,43 @@ def fetch_tasks(conn: sqlite3.Connection, project_name: str) -> pd.DataFrame:
         conn,
         """
         SELECT id, project_name, milestone_key, title, description, assignee_student_no, status, priority,
-               deadline, dependency_task_id, evidence_required, evidence_link, updated_at
+               deadline, dependency_task_id, evidence_required, evidence_link,
+               COALESCE(evidence_file, '') AS evidence_file, updated_at
         FROM tasks
         WHERE project_name = ?
         ORDER BY milestone_key, deadline, id
         """,
         (project_name,),
     )
+
+
+def save_uploaded_evidence(uploaded_file, task_id: int) -> str:
+    import uuid
+    ext = Path(uploaded_file.name).suffix.lower()
+    safe_name = f"task_{task_id}_{uuid.uuid4().hex[:8]}{ext}"
+    dest = UPLOADS_DIR / safe_name
+    dest.write_bytes(uploaded_file.getvalue())
+    return str(dest)
+
+
+def render_evidence_file(evidence_file_path: str) -> None:
+    if not evidence_file_path:
+        return
+    p = Path(evidence_file_path)
+    if not p.exists():
+        st.caption(f"Dosya bulunamadi: {p.name}")
+        return
+    ext = p.suffix.lower()
+    if ext in (".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp"):
+        st.image(str(p), caption=p.name, use_container_width=True)
+    elif ext == ".pdf":
+        st.caption(f"PDF dosyasi: {p.name}")
+        with open(p, "rb") as f:
+            st.download_button("PDF indir", f.read(), file_name=p.name, mime="application/pdf")
+    else:
+        st.caption(f"Dosya: {p.name}")
+        with open(p, "rb") as f:
+            st.download_button("Dosyayi indir", f.read(), file_name=p.name)
 
 
 def completion_percent(tasks_df: pd.DataFrame) -> float:
@@ -1463,8 +1512,20 @@ def render_advisor_panel(conn: sqlite3.Connection, advisor_name: str, roster: pd
             adv_new_status = st.selectbox("Yeni durum", adv_status_options, index=adv_status_idx, format_func=status_tr)
             adv_evidence = st.text_input("Kanit linki", value=adv_task_row["evidence_link"] or "")
             adv_task_submit = st.form_submit_button("Gorevi guncelle")
+        adv_evidence_upload = st.file_uploader(
+            "Kanit dosyasi yukle (resim, PDF vb.)",
+            type=["png", "jpg", "jpeg", "gif", "webp", "pdf", "docx", "zip"],
+            key=f"adv_evidence_file_{detail_project}",
+        )
+        existing_adv_file = str(adv_task_row.get("evidence_file", "") or "")
+        if existing_adv_file:
+            st.caption("Mevcut kanit dosyasi:")
+            render_evidence_file(existing_adv_file)
         if adv_task_submit:
-            ok, msg = update_task(conn, adv_task_id, adv_new_status, adv_evidence, skip_milestone_check=True)
+            file_path = ""
+            if adv_evidence_upload is not None:
+                file_path = save_uploaded_evidence(adv_evidence_upload, adv_task_id)
+            ok, msg = update_task(conn, adv_task_id, adv_new_status, adv_evidence, skip_milestone_check=True, evidence_file=file_path)
             if ok:
                 st.success("Gorev guncellendi.")
                 st.rerun()
@@ -1646,8 +1707,20 @@ def render_leader_panel(
         status = st.selectbox("Durum", status_options, index=status_idx, format_func=status_tr)
         evidence_link = st.text_input("Kanit linki", value=row["evidence_link"] or "")
         upd_submit = st.form_submit_button("Guncelle")
+    ldr_evidence_upload = st.file_uploader(
+        "Kanit dosyasi yukle (resim, PDF vb.)",
+        type=["png", "jpg", "jpeg", "gif", "webp", "pdf", "docx", "zip"],
+        key=f"ldr_evidence_file_{project_name}",
+    )
+    existing_ldr_file = str(row.get("evidence_file", "") or "")
+    if existing_ldr_file:
+        st.caption("Mevcut kanit dosyasi:")
+        render_evidence_file(existing_ldr_file)
     if upd_submit:
-        ok, msg = update_task(conn, task_id, status, evidence_link, skip_milestone_check=True)
+        file_path = ""
+        if ldr_evidence_upload is not None:
+            file_path = save_uploaded_evidence(ldr_evidence_upload, task_id)
+        ok, msg = update_task(conn, task_id, status, evidence_link, skip_milestone_check=True, evidence_file=file_path)
         if ok:
             st.success("Gorev guncellendi.")
             st.rerun()
@@ -1775,8 +1848,20 @@ def render_student_panel(
                 status = st.selectbox("Durum", status_options, index=status_idx, format_func=status_tr)
                 evidence = st.text_input("Kanit linki", value=task_row["evidence_link"] or "")
                 save_task = st.form_submit_button("Gorevi kaydet")
+            stu_evidence_upload = st.file_uploader(
+                "Kanit dosyasi yukle (resim, PDF vb.)",
+                type=["png", "jpg", "jpeg", "gif", "webp", "pdf", "docx", "zip"],
+                key=f"stu_evidence_file_{student_no}",
+            )
+            existing_stu_file = str(task_row.get("evidence_file", "") or "")
+            if existing_stu_file:
+                st.caption("Mevcut kanit dosyasi:")
+                render_evidence_file(existing_stu_file)
             if save_task:
-                ok, msg = update_task(conn, int(task_row["id"]), status, evidence)
+                file_path = ""
+                if stu_evidence_upload is not None:
+                    file_path = save_uploaded_evidence(stu_evidence_upload, int(task_row["id"]))
+                ok, msg = update_task(conn, int(task_row["id"]), status, evidence, evidence_file=file_path)
                 if ok:
                     st.success("Goreviniz guncellendi.")
                     st.rerun()
