@@ -1861,6 +1861,49 @@ def render_leader_panel(
         hide_index=True,
     )
 
+    # ── Grup üyesi şifre sıfırlama (sadece lider yetkisi) ─────────────────
+    st.markdown("### 🔑 Grup üyesi şifre sıfırlama")
+    st.caption(
+        "Grubunuzdaki bir üyenin şifresi unutulduğunda varsayılan şifreye (12345) sıfırlayabilirsiniz. "
+        "Üye ilk girişinde şifresini değiştirmek zorunda kalacaktır."
+    )
+    # Liderin kendi hesabı hariç sadece gruptaki diğer üyeler listelensin
+    other_members = team_df[team_df["student_no"].astype(str) != str(leader_no)].copy()
+    if other_members.empty:
+        st.info("Grubunuzda şifre sıfırlanabilecek başka üye bulunmuyor.")
+    else:
+        reset_options = {
+            f"{r['student_name']} ({r['student_no']})": str(r["student_no"])
+            for _, r in other_members.sort_values("student_name").iterrows()
+        }
+        with st.form(f"leader_pwd_reset_form_{project_name}"):
+            selected_member_label = st.selectbox(
+                "Şifresi sıfırlanacak üye",
+                list(reset_options.keys()),
+                key=f"ldr_pwd_reset_pick_{project_name}",
+            )
+            confirm_reset = st.checkbox(
+                "Bu üyenin şifresinin 12345'e sıfırlanacağını onaylıyorum",
+                key=f"ldr_pwd_reset_confirm_{project_name}",
+            )
+            reset_submit = st.form_submit_button("Şifreyi sıfırla", disabled=not confirm_reset)
+
+        if reset_submit:
+            target_no = reset_options[selected_member_label]
+            # Güvenlik: atanan öğrencinin gerçekten bu projeye ait olduğunu teyit et
+            is_member = not team_df[team_df["student_no"].astype(str) == target_no].empty
+            if not is_member:
+                st.error("Bu öğrenci grubunuzda kayıtlı değil. İşlem reddedildi.")
+            else:
+                ok = reset_password_to_default(conn, target_no, "student")
+                if ok:
+                    st.success(
+                        f"{selected_member_label} şifresi 12345 olarak sıfırlandı. "
+                        "Üye bir sonraki girişinde yeni şifre belirlemek zorunda kalacak."
+                    )
+                else:
+                    st.error("Kullanıcı bulunamadı veya sıfırlama başarısız oldu.")
+
 
 def render_student_panel(
     conn: sqlite3.Connection,
