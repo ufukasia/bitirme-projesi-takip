@@ -1,0 +1,275 @@
+" ile eslesen ogrenci bulunamadi.
+### Acilis ozeti: proje + bireysel ilerleme
+### Acilis ozeti: proje + lider ilerleme
+### Acilis ozeti: tum projelerin durumu
+### CSV ile ogrenci listesi guncelleme
+### Danisman geri bildirimi
+### Danisman geri bildirimleri
+### Danismana ait gruplar ve ogrenciler
+### Diger gruplarla karsilastirma
+### Gecmis geri bildirimler
+### Gecmis haftalik girislerim
+### Gorev durumu guncelleme
+### Gorev takibi
+### Gorev yorumlari
+### Grup uyeleri ve roller
+### Haftalik guncellemeler
+### Haftalik ilerleme girisi
+### Kisisel milestone gorev siraniz
+### Ogrenci arama ve bireysel takip
+### Proje detayi
+### Proje lideri atama
+### Sifre sifirlama
+### Tek ogrenci ekleme
+### 🔑 Grup üyesi şifre sıfırlama
+#### Gorev yorumlari
+#### Milestone bazli ilerleme
+' projesinde kayitli.
+' projesine eklendi.
+)
+                      AND status <> 'DONE'
+) basariyla '
+**Gorev Durumu (Milestone Bazli):**
+**Haftalik Giris Gecmisi:**
+**Projeye Verilen Geri Bildirimler:**
+**Takim Arkadaşları:**
+. sirada.
+<style>
+        /* Üst logo şeridi */
+        .otu-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 999999;
+            background: linear-gradient(90deg, #0a2342 0%, #1a3a6b 60%, #0f4c81 100%);
+            padding: 0.55rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+        }
+        .otu-header .otu-icon {
+            font-size: 1.55rem;
+            line-height: 1;
+        }
+        .otu-header .otu-text-block {
+            display: flex;
+            flex-direction: column;
+            line-height: 1.2;
+        }
+        .otu-header .otu-uni {
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: #ffd700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+        .otu-header .otu-dept {
+            font-size: 0.72rem;
+            font-weight: 500;
+            color: #cce0ff;
+            letter-spacing: 0.02em;
+        }
+        .otu-header .otu-divider {
+            margin-left: auto;
+            font-size: 0.70rem;
+            color: #7ab3e0;
+            font-style: italic;
+        }
+        /* Streamlit içeriğini logo bandının altına it */
+        [data-testid="stAppViewContainer"] > section:first-child {
+            padding-top: 3.4rem !important;
+        }
+        [data-testid="stHeader"] {
+            top: 2.8rem !important;
+        }
+        </style>
+        <div class="otu-header">
+            <span class="otu-icon">🎓</span>
+            <div class="otu-text-block">
+                <span class="otu-uni">OSTİM Teknik Üniversitesi</span>
+                <span class="otu-dept">Yazılım Mühendisliği Bölümü</span>
+            </div>
+            <span class="otu-divider">Bitirme Proje Takip Sistemi</span>
+        </div>
+Aktif danisman kullanicisi bulunamadi.
+Aktif gorev
+Algoritma ve uygulama plani
+Atanan Gorev
+Birden fazla sonuc bulundu, secin
+Bitirme Proje Takip | OSTİM Teknik Üniversitesi
+Bu islem tum verileri silecektir!
+Bu ogrenci numarasi icin kayit bulunamadi.
+Bu ogrenciye atanmis gorev yok.
+Bu ogrenciye henuz rol verilmedi.
+Bu proje icin gorev yok.
+Bu proje icin lider paneline erisim yetkiniz yok.
+Bu öğrenci grubunuzda kayıtlı değil. İşlem reddedildi.
+Bu üyenin şifresinin 12345'e sıfırlanacağını onaylıyorum
+CREATE INDEX IF NOT EXISTS idx_students_advisor ON students(advisor_name)
+CREATE INDEX IF NOT EXISTS idx_students_project ON students(project_name)
+CSV bulunamadi:
+CSV dosyasi secin
+CSV kolonlari yetersiz.
+CSV okuma hatasi:
+CSV okunamadi.
+CSV yukle / guncelle
+Cikis yap
+DEVAM EDIYOR
+DROP TABLE students_old
+Danisman gruplari
+Danisman paneli:
+Danisman secin
+Danisman tarafindan atanmis lider
+Deadline yok
+Detay goruntulenecek proje
+Dosya bulunamadi:
+Dosyayi indir
+Dr. UFUK ASIL
+Durum gecisi gecersiz:
+Duzenlenecek gorev
+Geciken Gorev
+Geciken gorev
+Geri bildirim
+Geri bildirim bos olamaz.
+Geri bildirim kaydedildi.
+Giris bilgileri gecersiz.
+Giris yap
+Giris yapan danisman:
+Giris yapan ogrenci:
+Giris yapan:
+Gorev basligi
+Gorev basligi gerekli.
+Gorev bulunamadi.
+Gorev eklendi.
+Gorev guncellendi.
+Gorev secin
+Gorevi guncelle
+Gorevi kaydet
+Goreviniz guncellendi.
+Grubunuzda şifre sıfırlanabilecek başka üye bulunmuyor.
+Grubunuzdaki bir üyenin şifresi unutulduğunda varsayılan şifreye (12345) sıfırlayabilirsiniz. Üye ilk girişinde şifresini değiştirmek zorunda kalacaktır.
+Grup Uyeleri
+Grup Yoneticisi
+Grup uyesi.
+Grup yoneticisi paneli
+Hafta baslangici
+Haftalik giris icin acik milestone gorevi yok.
+Haftalik giris kaydedildi.
+Haftalik girisi kaydet
+Hatalari duzeltme ve tekrar deneme
+Henuz danisman geri bildirimi yok.
+Henuz gorev girisi yok.
+Henuz haftalik giris yapilmamis.
+Henuz yorum yok.
+Ilerleme %
+Ilgili gorev
+Ilk giriste sifrenizi degistirmeniz gerekiyor.
+Ilk sifre tum kullanicilar icin 12345'tir. Ilk giriste sifre degistirme zorunludur.
+Istenen kanit
+Kanit dosyasi yukle (resim, PDF vb.)
+Kanit dosyasi: #
+Kanit link
+Kanit linki
+Karsilastirma kapsami
+Kendi gorevim
+Kendi ilerleme
+Kisisel gorev tanimi
+Kullanici bulunamadi.
+Kullanici turu
+Kullanıcı bulunamadı veya sıfırlama başarısız oldu.
+Lider adayi
+Lider atamasi yok. Danisman panelinden atayin.
+Lider guncellendi.
+Lideri kaydet
+Literatur taramasi
+Mevcut bir projeye ekle
+Mevcut kanit dosyasi:
+Mevcut proje sec
+Not: Onceki milestone tamamlanmadan sonraki milestone gorevine gecilemez.
+Ogrenci / danisman sifresi sifirla
+Ogrenci Adi Soyadi
+Ogrenci No
+Ogrenci Sayisi
+Ogrenci adi bos olamaz.
+Ogrenci adi veya numarasi ile arayiniz
+Ogrenci kaydi bulunamadi.
+Ogrenci listesini guncelle
+Ogrenci no bos olamaz.
+Ogrenci paneli
+Ogrenci secin
+Ogrenciyi ekle
+Onceki milestone tamamlanmadan bu goreve gecilemez. Tamamlanmamis:
+Ornek: Ali Veli veya 2001234567
+PDF dosyasi:
+PDF indir
+PRAGMA foreign_keys = ON
+PRAGMA journal_mode=WAL
+PRAGMA table_info(students)
+Proje Sorumlusu
+Proje adi bos olamaz.
+Proje gorev
+Proje tamamlanma
+Proje yazimi ve final rapor
+Repo linki veya rapor
+Repo linki, rapor veya ilgili kanit
+Revizyon gerekli
+Revizyon gerekli!
+Rol guncellendi.
+Rolu kaydet
+SQLite ogrenci kaydi yok. Uygulama yalnizca SQLite verisi ile calisir.
+SQLite ogrenci tablosu bos.
+Secilen danismana ait grup/ogrenci kaydi yok.
+Secilen danismana ait ogrenci bulunamadi.
+Secilen kullanicinin sifresi 12345'e sifirlanir ve ilk giriste degistirmesi zorunlu olur.
+Secili proje:
+Sifirlanacak danisman yok.
+Sifirlanacak ogrenci yok.
+Sifre en az
+Sifre guncellendi.
+Sifreler eslesmiyor.
+Sifreyi guncelle
+Sifreyi sifirla
+Siradaki zorunlu gorev:
+Size atanmis gorev yok.
+Son 14 Gun Aktivite
+Sonraki Adim
+Sonraki adim
+TAMAMLANDI durumuna gecmek icin kanit linki veya dosya zorunludur.
+Tamamlanma %
+Toplam gorev
+Tum gruplar
+Tum milestone gorevlerini tamamladiniz.
+Uye sec
+Uygulamayi boot etme
+Uygulamayi deneme ve sonuclari degerlendirme
+Varsayilan lider (projedeki ilk ogrenci).
+Varsayilan sifreyi kullanamazsiniz.
+Veritabani sifirlandi. Yedek:
+Veritabanini sifirla
+Veritabanini silmek istedigimden eminim
+Yapilanlar veya sonraki adim alanindan en az biri dolu olmali.
+Yeni durum
+Yeni ogrenci ekle
+Yeni proje adi
+Yeni sifre
+Yeni sifre (tekrar)
+Yorum bos olamaz.
+Yorum ekle
+Yorum eklendi.
+Yorum yazin
+Yorumlar: #
+adimi icin bireysel gorev.
+grup icinde
+karakter olmali.
+numarali ogrenci zaten '
+ogrenci kaydi bulundu.
+ogrenci kaydi guncellendi.
+sifresi 12345 olarak sifirlandi.
+| Gorev:
+Şifresi sıfırlanacak üye
+Şifreyi sıfırla
+şifresi 12345 olarak sıfırlandı. Üye bir sonraki girişinde yeni şifre belirlemek zorunda kalacak.
+⚠️ Veritabani sifirlama (tehlikeli)
+🗂️ Bitirme Proje Takip Uygulaması

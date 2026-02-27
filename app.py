@@ -2,7 +2,9 @@
 
 import hashlib
 import hmac
+import json
 import os
+import re
 import shutil
 import sqlite3
 import threading
@@ -12,6 +14,7 @@ from typing import Dict, Iterable, Optional
 
 import pandas as pd
 import streamlit as st
+from streamlit.delta_generator import DeltaGenerator
 
 UPLOADS_DIR = Path("uploads")
 UPLOADS_DIR.mkdir(exist_ok=True)
@@ -45,9 +48,408 @@ MILESTONES = [
 MILESTONE_LABELS = {key: label for key, label in MILESTONES}
 MILESTONE_ORDER = {key: idx for idx, (key, _) in enumerate(MILESTONES)}
 
+LANGUAGE_STATE_KEY = "ui_language"
+DEFAULT_LANGUAGE = "tr"
+LANGUAGE_OPTIONS = {"Turkce": "tr", "English": "en"}
+TRANSLATION_FILE = Path(__file__).with_name("translations_tr_en.json")
+STATUS_LABELS_EN = {
+    "TODO": "TO DO",
+    "DOING": "IN PROGRESS",
+    "DONE": "DONE",
+}
+TRANSLATION_OVERRIDES_TR_EN = {
+    "Giris": "Login",
+    "Cikis yap": "Log out",
+    "Danisman paneli:": "Advisor panel:",
+    "Danisman paneli: ": "Advisor panel: ",
+    "Giris yapan:": "Logged in:",
+    "Giris yapan danisman:": "Logged in advisor:",
+    "Giris yapan ogrenci:": "Logged in student:",
+    "Secili proje:": "Selected project:",
+    "Yetki:": "Role:",
+    "Ogrenci paneli": "Student panel",
+    "Gorunum": "View",
+    "Grup Yoneticisi": "Group Leader",
+    "Grup yoneticisi paneli": "Group leader panel",
+    "Danisman gruplari": "Advisor groups",
+    "Tum gruplar": "All groups",
+    "### Gorev durumu guncelleme": "### Task status update",
+    "### Gorev yorumlari": "### Task comments",
+    "#### Gorev yorumlari": "#### Task comments",
+    "**Gorev Durumu (Milestone Bazli):**": "**Task Status (By Milestone):**",
+    "Gorev basligi": "Task title",
+    "Gorev basligi gerekli.": "Task title is required.",
+    "Gorev eklendi.": "Task added.",
+    "Gorev guncellendi.": "Task updated.",
+    "Gorev bulunamadi.": "Task not found.",
+    "Goreviniz guncellendi.": "Your task has been updated.",
+    "Yeni durum": "New status",
+    "Durum": "Status",
+    "Rol: ": "Role: ",
+    "Kullanici turu": "User type",
+    "Yok": "None",
+    "Uye": "Member",
+    "Grup uyesi.": "Group member.",
+    "Tamamlanan": "Completed",
+    "Geciken Gorev": "Overdue Tasks",
+    "Tamamlanma %": "Completion %",
+    "Son 14 Gun Aktivite": "Last 14 Days Activity",
+    "Sira": "Rank",
+    "Sifirlanacak ogrenci yok.": "No students to reset.",
+    "Sifirlanacak danisman yok.": "No advisors to reset.",
+    "Sifreyi sifirla": "Reset password",
+    "Sifreyi guncelle": "Update password",
+    "Ilgili gorev": "Related task",
+    "Hafta baslangici": "Week start",
+    "Yapilanlar": "Completed work",
+    "Engeller": "Blockers",
+    "Sonraki adim": "Next step",
+    "Kanit link": "Evidence link",
+    "Haftalik girisi kaydet": "Save weekly update",
+    "Kanit linki": "Evidence link",
+    "Kendi gorevim": "My tasks",
+    "Kendi ilerleme": "My progress",
+    "Proje gorev": "Project tasks",
+    "Proje tamamlanma": "Project completion",
+    "Lider adayi": "Leader candidate",
+    "**Gorevi:**": "**Task:**",
+    "Acilis ozeti: proje + bireysel ilerleme": "Overview: project + individual progress",
+    "Acilis ozeti: proje + lider ilerleme": "Overview: project + leader progress",
+    "Acilis ozeti: tum projelerin durumu": "Overview: all projects status",
+    "YAPILACAK": "TO DO",
+    "DEVAM EDIYOR": "IN PROGRESS",
+    "TAMAMLANDI": "DONE",
+    "Dusuk": "Low",
+    "Orta": "Medium",
+    "Yuksek": "High",
+    "Bitirme Proje Takip | OSTİM Teknik Üniversitesi": "Capstone Project Tracking | OSTIM Technical University",
+    "🗂️ Bitirme Proje Takip Uygulaması": "🗂️ Capstone Project Tracking App",
+}
+SEGMENT_TRANSLATIONS_TR_EN = [
+    ("Bitirme Proje Takip Uygulamasi", "Capstone Project Tracking App"),
+    ("Bitirme Proje Takip Uygulaması", "Capstone Project Tracking App"),
+    ("Bitirme Proje Takip Sistemi", "Capstone Project Tracking System"),
+    ("OSTİM Teknik Üniversitesi", "OSTIM Technical University"),
+    ("Yazılım Mühendisliği Bölümü", "Software Engineering Department"),
+    ("Danisman paneli", "Advisor panel"),
+    ("Danışman paneli", "Advisor panel"),
+    ("Giris yapan danisman:", "Logged in advisor:"),
+    ("Giris yapan ogrenci:", "Logged in student:"),
+    ("Giris yapan:", "Logged in:"),
+    ("Secili proje:", "Selected project:"),
+    ("Veritabani:", "Database:"),
+    ("Veritabani sifirlandi. Yedek:", "Database reset. Backup:"),
+    ("Sifre en az ", "Password must be at least "),
+    (" karakter olmali.", " characters."),
+    (" ile eslesen ogrenci bulunamadi.", " matched student not found."),
+    (" numarali ogrenci zaten '", " student number is already registered in project '"),
+    ("' projesinde kayitli.", "'."),
+    (" basariyla '", " successfully added to project '"),
+    ("' projesine eklendi.", "'."),
+    (" sifresi 12345 olarak sifirlandi.", " password was reset to 12345."),
+    (" şifresi 12345 olarak sıfırlandı.", " password was reset to 12345."),
+    (" grup icinde ", " among "),
+    (". sirada.", "th place."),
+    ("CSV okuma hatasi:", "CSV read error:"),
+    ("Kanit dosyasi: #", "Evidence file: #"),
+    (" | Gorev:", " | Task:"),
+    ("Literatur taramasi", "Literature review"),
+    ("Algoritma ve uygulama plani", "Algorithm and implementation plan"),
+    ("Uygulamayi boot etme", "Bootstrapping the application"),
+    ("Uygulamayi deneme ve sonuclari degerlendirme", "Testing the application and evaluating results"),
+    ("Hatalari duzeltme ve tekrar deneme", "Fixing errors and retrying"),
+    ("Proje yazimi ve final rapor", "Project writing and final report"),
+    (" ogrenci kaydi bulundu.", " student records found."),
+    (" ogrenci kaydi guncellendi.", " student records updated."),
+    ("Siradaki zorunlu gorev:", "Next required task:"),
+]
+TOKEN_TRANSLATIONS_TR_EN = {
+    "Gorev": "Task",
+    "gorev": "task",
+    "Ogrenci": "Student",
+    "ogrenci": "student",
+    "Danisman": "Advisor",
+    "danisman": "advisor",
+    "Proje": "Project",
+    "proje": "project",
+    "Lider": "Leader",
+    "lider": "leader",
+    "Sifre": "Password",
+    "sifre": "password",
+    "Kanit": "Evidence",
+    "kanit": "evidence",
+    "Haftalik": "Weekly",
+    "haftalik": "weekly",
+    "Acilis": "Overview",
+    "acilis": "overview",
+    "Gecmis": "Past",
+    "gecmis": "past",
+    "Karsilastirma": "Comparison",
+    "karsilastirma": "comparison",
+    "Tamamlanma": "Completion",
+    "tamamlanma": "completion",
+    "Ilerleme": "Progress",
+    "ilerleme": "progress",
+    "Öğrenci": "Student",
+    "öğrenci": "student",
+    "Danışman": "Advisor",
+    "danışman": "advisor",
+    "Görev": "Task",
+    "görev": "task",
+    "Şifre": "Password",
+    "şifre": "password",
+}
+TEXT_CLEANUPS_EN = [
+    ("Quest", "Task"),
+    ("quest", "task"),
+    ("Mission", "Task"),
+    ("mission", "task"),
+    ("Entrance", "Login"),
+    ("Open summary", "Overview"),
+    ("Opening summary", "Overview"),
+    ("Group admin panel", "Group leader panel"),
+    ("Checked in by", "Logged in"),
+    ("Checking in consultant", "Logged in advisor"),
+    ("User tour", "User type"),
+    ("new situation", "new status"),
+    ("situation", "status"),
+    ("proof link", "evidence link"),
+    ("start of the week", "week start"),
+    ("Spare", "Backup"),
+    ("paneli", "panel"),
+]
+_TRANSLATIONS_CACHE: Optional[dict[str, str]] = None
+_I18N_PATCHED = False
+
+
+def get_current_language() -> str:
+    lang = str(st.session_state.get(LANGUAGE_STATE_KEY, DEFAULT_LANGUAGE))
+    return lang if lang in {"tr", "en"} else DEFAULT_LANGUAGE
+
+
+def is_english_ui() -> bool:
+    return get_current_language() == "en"
+
+
+def load_translations() -> dict[str, str]:
+    global _TRANSLATIONS_CACHE
+    if _TRANSLATIONS_CACHE is not None:
+        return _TRANSLATIONS_CACHE
+
+    mapping: dict[str, str] = {}
+    if TRANSLATION_FILE.exists():
+        try:
+            raw = json.loads(TRANSLATION_FILE.read_text(encoding="utf-8"))
+            if isinstance(raw, dict):
+                for key, value in raw.items():
+                    if isinstance(key, str) and isinstance(value, str) and value.strip():
+                        mapping[key] = value
+        except Exception:
+            pass
+
+    mapping.update(TRANSLATION_OVERRIDES_TR_EN)
+    _TRANSLATIONS_CACHE = mapping
+    return mapping
+
+
+def translate_text_for_language(value: str, language: str) -> str:
+    if language != "en" or not isinstance(value, str):
+        return value
+
+    text = value
+    if "<style" in text or "</style>" in text or "<div" in text or "</div>" in text or "data-testid=" in text:
+        return text
+    direct = load_translations().get(text)
+    if direct:
+        text = direct
+
+    for src, dst in SEGMENT_TRANSLATIONS_TR_EN:
+        text = text.replace(src, dst)
+    for src, dst in TOKEN_TRANSLATIONS_TR_EN.items():
+        text = re.sub(rf"\b{re.escape(src)}\b", dst, text)
+    for src, dst in TEXT_CLEANUPS_EN:
+        text = text.replace(src, dst)
+    text = re.sub(r"\s{2,}", " ", text)
+    return text
+
+
+def translate_text(value: str) -> str:
+    return translate_text_for_language(value, get_current_language())
+
+
+def translate_dataframe(df: pd.DataFrame) -> pd.DataFrame:
+    if not is_english_ui() or df.empty:
+        return df
+
+    translated = df.copy()
+    translated.columns = [translate_text(str(col)) for col in translated.columns]
+    for col in translated.columns:
+        series = translated[col]
+        if pd.api.types.is_object_dtype(series) or pd.api.types.is_string_dtype(series):
+            translated[col] = series.map(lambda value: translate_text(value) if isinstance(value, str) else value)
+    return translated
+
+
+def patch_streamlit_i18n() -> None:
+    global _I18N_PATCHED
+    if _I18N_PATCHED:
+        return
+
+    def patch_callable(target: object, name: str, wrapper_factory) -> None:
+        current = getattr(target, name, None)
+        if current is None or getattr(current, "_i18n_patched", False):
+            return
+        wrapped = wrapper_factory(current)
+        setattr(wrapped, "_i18n_patched", True)
+        setattr(target, name, wrapped)
+
+    def wrap_label_method(func, is_bound_method: bool):
+        def wrapped(*args, **kwargs):
+            args_list = list(args)
+            label_index = 1 if is_bound_method else 0
+            if len(args_list) > label_index and isinstance(args_list[label_index], str):
+                args_list[label_index] = translate_text(args_list[label_index])
+            elif isinstance(kwargs.get("label"), str):
+                kwargs["label"] = translate_text(kwargs["label"])
+
+            for key in ("help", "placeholder"):
+                if isinstance(kwargs.get(key), str):
+                    kwargs[key] = translate_text(kwargs[key])
+            return func(*args_list, **kwargs)
+
+        return wrapped
+
+    def wrap_select_like_method(func, is_bound_method: bool):
+        def wrapped(*args, **kwargs):
+            args_list = list(args)
+            label_index = 1 if is_bound_method else 0
+            current_lang = get_current_language()
+            if len(args_list) > label_index and isinstance(args_list[label_index], str):
+                args_list[label_index] = translate_text_for_language(args_list[label_index], current_lang)
+            elif isinstance(kwargs.get("label"), str):
+                kwargs["label"] = translate_text_for_language(kwargs["label"], current_lang)
+
+            raw_key = kwargs.get("key")
+            if isinstance(raw_key, str):
+                kwargs["key"] = f"{raw_key}__{current_lang}"
+
+            if current_lang == "en":
+                existing_format = kwargs.get("format_func")
+                if existing_format is status_tr:
+                    kwargs["format_func"] = lambda option: STATUS_LABELS_EN.get(str(option), str(option))
+                elif existing_format is None:
+                    kwargs["format_func"] = lambda option, lang=current_lang: translate_text_for_language(str(option), lang)
+                else:
+                    kwargs["format_func"] = (
+                        lambda option, inner=existing_format, lang=current_lang: translate_text_for_language(str(inner(option)), lang)
+                    )
+            return func(*args_list, **kwargs)
+
+        return wrapped
+
+    def wrap_write_method(func, is_bound_method: bool):
+        def wrapped(*args, **kwargs):
+            args_list = list(args)
+            start = 1 if is_bound_method else 0
+            for idx in range(start, len(args_list)):
+                value = args_list[idx]
+                if isinstance(value, str):
+                    args_list[idx] = translate_text(value)
+                elif isinstance(value, pd.DataFrame):
+                    args_list[idx] = translate_dataframe(value)
+            return func(*args_list, **kwargs)
+
+        return wrapped
+
+    def wrap_dataframe_method(func, is_bound_method: bool):
+        def wrapped(*args, **kwargs):
+            args_list = list(args)
+            data_index = 1 if is_bound_method else 0
+            if len(args_list) > data_index and isinstance(args_list[data_index], pd.DataFrame):
+                args_list[data_index] = translate_dataframe(args_list[data_index])
+            elif isinstance(kwargs.get("data"), pd.DataFrame):
+                kwargs["data"] = translate_dataframe(kwargs["data"])
+            return func(*args_list, **kwargs)
+
+        return wrapped
+
+    def wrap_metric_method(func, is_bound_method: bool):
+        def wrapped(*args, **kwargs):
+            args_list = list(args)
+            label_index = 1 if is_bound_method else 0
+            value_index = 2 if is_bound_method else 1
+            if len(args_list) > label_index and isinstance(args_list[label_index], str):
+                args_list[label_index] = translate_text(args_list[label_index])
+            elif isinstance(kwargs.get("label"), str):
+                kwargs["label"] = translate_text(kwargs["label"])
+
+            if len(args_list) > value_index and isinstance(args_list[value_index], str):
+                args_list[value_index] = translate_text(args_list[value_index])
+            elif isinstance(kwargs.get("value"), str):
+                kwargs["value"] = translate_text(kwargs["value"])
+            return func(*args_list, **kwargs)
+
+        return wrapped
+
+    for method_name in [
+        "title",
+        "header",
+        "subheader",
+        "caption",
+        "markdown",
+        "text",
+        "success",
+        "error",
+        "warning",
+        "info",
+        "button",
+        "checkbox",
+        "text_input",
+        "text_area",
+        "file_uploader",
+        "date_input",
+        "form_submit_button",
+        "download_button",
+        "expander",
+    ]:
+        patch_callable(DeltaGenerator, method_name, lambda func: wrap_label_method(func, True))
+        patch_callable(st, method_name, lambda func: wrap_label_method(func, False))
+
+    for method_name in ["selectbox", "radio", "multiselect"]:
+        patch_callable(DeltaGenerator, method_name, lambda func: wrap_select_like_method(func, True))
+        patch_callable(st, method_name, lambda func: wrap_select_like_method(func, False))
+
+    patch_callable(DeltaGenerator, "write", lambda func: wrap_write_method(func, True))
+    patch_callable(st, "write", lambda func: wrap_write_method(func, False))
+    patch_callable(DeltaGenerator, "dataframe", lambda func: wrap_dataframe_method(func, True))
+    patch_callable(st, "dataframe", lambda func: wrap_dataframe_method(func, False))
+    patch_callable(DeltaGenerator, "metric", lambda func: wrap_metric_method(func, True))
+    patch_callable(st, "metric", lambda func: wrap_metric_method(func, False))
+    _I18N_PATCHED = True
+
+
+def render_language_selector() -> None:
+    labels = list(LANGUAGE_OPTIONS.keys())
+    current_lang = get_current_language()
+    current_label = next((label for label, code in LANGUAGE_OPTIONS.items() if code == current_lang), labels[0])
+    selected_label = st.radio(
+        "Dil / Language",
+        labels,
+        index=labels.index(current_label),
+        horizontal=True,
+        key="ui_language_picker",
+    )
+    selected_lang = LANGUAGE_OPTIONS.get(selected_label, DEFAULT_LANGUAGE)
+    if selected_lang != current_lang:
+        st.session_state[LANGUAGE_STATE_KEY] = selected_lang
+        st.rerun()
+
 
 def status_tr(status_value: str) -> str:
-    return STATUS_LABELS.get(str(status_value), str(status_value))
+    status_key = str(status_value)
+    if is_english_ui():
+        return STATUS_LABELS_EN.get(status_key, status_key)
+    return STATUS_LABELS.get(status_key, status_key)
 
 
 def normalize_identity(value: str) -> str:
@@ -2194,18 +2596,35 @@ def enforce_password_change(conn: sqlite3.Connection, auth_user: dict) -> bool:
 
 
 def main() -> None:
+    if LANGUAGE_STATE_KEY not in st.session_state:
+        st.session_state[LANGUAGE_STATE_KEY] = DEFAULT_LANGUAGE
+
+    page_title = (
+        "Capstone Project Tracking | OSTIM Technical University"
+        if get_current_language() == "en"
+        else "Bitirme Proje Takip | OSTİM Teknik Üniversitesi"
+    )
     st.set_page_config(
-        page_title="Bitirme Proje Takip | OSTİM Teknik Üniversitesi",
+        page_title=page_title,
         page_icon="🎓",
         layout="wide",
     )
 
+    with st.sidebar:
+        render_language_selector()
+
+    patch_streamlit_i18n()
+
+    header_university = "OSTİM Technical University" if is_english_ui() else "OSTİM Teknik Üniversitesi"
+    header_department = "Software Engineering Department" if is_english_ui() else "Yazılım Mühendisliği Bölümü"
+    header_system = "Capstone Project Tracking System" if is_english_ui() else "Bitirme Proje Takip Sistemi"
+
     # ── Sabit üst logo bandı ────────────────────────────────────────────────
     st.markdown(
-        """
+        f"""
         <style>
         /* Üst logo şeridi */
-        .otu-header {
+        .otu-header {{
             position: fixed;
             top: 0;
             left: 0;
@@ -2217,50 +2636,50 @@ def main() -> None:
             align-items: center;
             gap: 0.75rem;
             box-shadow: 0 2px 8px rgba(0,0,0,0.35);
-        }
-        .otu-header .otu-icon {
+        }}
+        .otu-header .otu-icon {{
             font-size: 1.55rem;
             line-height: 1;
-        }
-        .otu-header .otu-text-block {
+        }}
+        .otu-header .otu-text-block {{
             display: flex;
             flex-direction: column;
             line-height: 1.2;
-        }
-        .otu-header .otu-uni {
+        }}
+        .otu-header .otu-uni {{
             font-size: 0.82rem;
             font-weight: 700;
             color: #ffd700;
             letter-spacing: 0.04em;
             text-transform: uppercase;
-        }
-        .otu-header .otu-dept {
+        }}
+        .otu-header .otu-dept {{
             font-size: 0.72rem;
             font-weight: 500;
             color: #cce0ff;
             letter-spacing: 0.02em;
-        }
-        .otu-header .otu-divider {
+        }}
+        .otu-header .otu-divider {{
             margin-left: auto;
             font-size: 0.70rem;
             color: #7ab3e0;
             font-style: italic;
-        }
+        }}
         /* Streamlit içeriğini logo bandının altına it */
-        [data-testid="stAppViewContainer"] > section:first-child {
+        [data-testid="stAppViewContainer"] > section:first-child {{
             padding-top: 3.4rem !important;
-        }
-        [data-testid="stHeader"] {
+        }}
+        [data-testid="stHeader"] {{
             top: 2.8rem !important;
-        }
+        }}
         </style>
         <div class="otu-header">
             <span class="otu-icon">🎓</span>
             <div class="otu-text-block">
-                <span class="otu-uni">OSTİM Teknik Üniversitesi</span>
-                <span class="otu-dept">Yazılım Mühendisliği Bölümü</span>
+                <span class="otu-uni">{header_university}</span>
+                <span class="otu-dept">{header_department}</span>
             </div>
-            <span class="otu-divider">Bitirme Proje Takip Sistemi</span>
+            <span class="otu-divider">{header_system}</span>
         </div>
         """,
         unsafe_allow_html=True,
@@ -2394,5 +2813,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-
