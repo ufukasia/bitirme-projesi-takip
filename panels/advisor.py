@@ -8,7 +8,7 @@ import pandas as pd
 import streamlit as st
 
 from components import render_evidence_file, render_milestone_progress, render_task_comments, save_uploaded_evidence
-from constants import MILESTONE_LABELS, MILESTONES, PRIORITY_OPTIONS, ROLE_OPTIONS
+from constants import DEFAULT_PASSWORD, MILESTONE_LABELS, MILESTONES, PRIORITY_OPTIONS, ROLE_OPTIONS
 from models import (
     add_feedback,
     bootstrap_defaults,
@@ -23,14 +23,16 @@ from models import (
     load_roster_from_upload,
     member_progress,
     overdue_count,
+    rename_project,
     reset_password_to_default,
     set_leader,
     sync_auth_users,
     update_task,
     upsert_role,
-    upsert_students,
+    upsert_students_for_advisor,
 )
 from ui_helpers import (
+    _t,
     render_active_task_card,
     render_feedback_card,
     render_member_table,
@@ -158,6 +160,23 @@ def render_advisor_panel(conn, advisor_name: str, roster: pd.DataFrame) -> None:
         st.rerun()
 
     # ── CSV upload ────────────────────────────────────────────────────────────
+    section_header("✏️", "Proje Adı Düzenleme", "Kendi grubunuzun proje adını güncelleyin")
+    with st.form("project_rename_form"):
+        rename_source = st.selectbox("Adı değiştirilecek proje", projects, key="advisor_project_rename_pick")
+        rename_target = st.text_input("Yeni proje adı", value=rename_source, key="advisor_project_rename_text")
+        rename_confirm = st.checkbox(
+            "Bu projenin adını değiştireceğimi onaylıyorum",
+            key="advisor_project_rename_confirm",
+        )
+        rename_submit = st.form_submit_button("✏️ Proje Adını Güncelle", disabled=not rename_confirm, width="stretch")
+    if rename_submit:
+        ok, msg = rename_project(conn, advisor_name, rename_source, rename_target)
+        if ok:
+            st.cache_data.clear()
+            st.success(msg)
+            st.rerun()
+        st.error(msg)
+
     section_header("📤", "CSV Yükleme", "Öğrenci listesini CSV dosyasıyla güncelleyin")
     with st.expander("CSV Yükle / Güncelle"):
         uploaded_csv = st.file_uploader("CSV dosyası seçin", type=["csv"], key="advisor_csv_upload")
@@ -167,10 +186,11 @@ def render_advisor_panel(conn, advisor_name: str, roster: pd.DataFrame) -> None:
                 st.dataframe(new_roster,width="stretch", hide_index=True)
                 st.caption(f"{len(new_roster)} öğrenci kaydı bulundu.")
                 if st.button("✅ Öğrenci Listesini Güncelle", key="apply_csv_btn"):
-                    count = upsert_students(conn, new_roster)
+                    count = upsert_students_for_advisor(conn, advisor_name, new_roster)
                     sync_auth_users(conn)
-                    bootstrap_defaults(conn, new_roster)
-                    initialize_all_projects(conn, new_roster)
+                    updated_roster = get_roster_from_db(conn, advisor_name)
+                    bootstrap_defaults(conn, updated_roster)
+                    initialize_all_projects(conn, updated_roster)
                     st.cache_data.clear()
                     st.success(f"{count} öğrenci kaydı güncellendi.")
                     st.rerun()
@@ -245,7 +265,9 @@ def _render_student_detail(conn, roster, stu_rows, picked_no: str) -> None:
     if not my_tasks.empty:
         st.markdown("**Görev Durumu (Milestone Bazlı):**")
         task_table = my_tasks.copy()
-        task_table["Milestone"] = task_table["milestone_key"].map(MILESTONE_LABELS)
+        task_table["Milestone"] = task_table["milestone_key"].map(
+            lambda key: _t(MILESTONE_LABELS.get(str(key), str(key)))
+        )
         task_table["Durum"] = task_table["status"].map(status_tr)
         task_table["Deadline"] = task_table["deadline"].replace("", "—").fillna("—")
         st.dataframe(
@@ -326,7 +348,7 @@ def _render_password_reset(conn, roster) -> None:
     with st.expander("🔑 Şifre Sıfırla"):
         st.markdown(
             "<div style='font-size:0.78rem;color:#64748b;margin-bottom:0.5rem;'>"
-            "Seçilen kullanıcının şifresi <code>12345</code>'e sıfırlanır ve ilk girişte değiştirmesi zorunlu olur."
+            f"Seçilen kullanıcının şifresi <code>{DEFAULT_PASSWORD}</code>'e sıfırlanır ve ilk girişte değiştirmesi zorunlu olur."
             "</div>",
             unsafe_allow_html=True,
         )
@@ -380,7 +402,9 @@ def _render_project_detail(conn, roster, projects, advisor_name: str) -> None:
 
     if not tasks_df.empty:
         table = tasks_df.copy()
-        table["Milestone"] = table["milestone_key"].map(MILESTONE_LABELS)
+        table["Milestone"] = table["milestone_key"].map(
+            lambda key: _t(MILESTONE_LABELS.get(str(key), str(key)))
+        )
         table["Durum"] = table["status"].map(status_tr)
         table["deadline"] = table["deadline"].replace("", "—").fillna("—")
         st.dataframe(

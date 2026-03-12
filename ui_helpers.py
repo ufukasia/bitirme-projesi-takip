@@ -121,33 +121,31 @@ def render_project_cards(projects_data: list[dict], selected_project: str | None
                 f'padding:.15em .6em;font-size:.7rem;font-weight:700;">⏰ {overdue} {_e(lbl_overdue)}</span>'
                 if overdue > 0 else ""
             )
-            col.markdown(
-                f"""
-                <div style="background:{bg};border:{border};border-radius:12px;
-                            padding:1rem 1.1rem;box-shadow:0 2px 8px rgba(0,0,0,0.06);
-                            transition:all .2s;margin-bottom:0.5rem;">
-                    <div style="font-size:0.82rem;font-weight:700;color:#0a2342;
-                                margin-bottom:0.3rem;white-space:nowrap;overflow:hidden;
-                                text-overflow:ellipsis;" title="{_e(proj['name'])}">
-                        📁 {_e(proj['name'])}
-                    </div>
-                    <div style="font-size:0.72rem;color:#64748b;margin-bottom:0.5rem;">
-                        👑 {_e(proj.get('leader','-'))} &nbsp;·&nbsp; 👥 {proj.get('members',0)} {_e(lbl_members)}
-                    </div>
-                    <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.4rem;">
-                        <div style="flex:1;background:#e2e8f0;border-radius:999px;height:7px;overflow:hidden;">
-                            <div style="background:{bar_color};height:100%;width:{pct}%;border-radius:999px;transition:width .5s;"></div>
-                        </div>
-                        <span style="font-size:0.72rem;font-weight:700;color:{bar_color};min-width:32px;">%{int(pct)}</span>
-                    </div>
-                    <div style="display:flex;gap:0.4rem;flex-wrap:wrap;">
-                        {risk_badge_html(proj.get('risk','Orta'))}
-                        {overdue_html}
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True,
+            badges_html = risk_badge_html(proj.get("risk", "Orta")) + overdue_html
+            card_html = (
+                f'<div style="background:{bg};border:{border};border-radius:12px;'
+                f'padding:1rem 1.1rem;box-shadow:0 2px 8px rgba(0,0,0,0.06);'
+                f'transition:all .2s;margin-bottom:0.5rem;">'
+                f'<div style="font-size:0.82rem;font-weight:700;color:#0a2342;'
+                f'margin-bottom:0.3rem;white-space:nowrap;overflow:hidden;'
+                f'text-overflow:ellipsis;" title="{_e(proj["name"])}">'
+                f'📁 {_e(proj["name"])}</div>'
+                f'<div style="font-size:0.72rem;color:#64748b;margin-bottom:0.5rem;">'
+                f'👑 {_e(proj.get("leader", "-"))} &nbsp;·&nbsp;'
+                f' 👥 {proj.get("members", 0)} {_e(lbl_members)}</div>'
+                f'<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.4rem;">'
+                f'<div style="flex:1;background:#e2e8f0;border-radius:999px;height:7px;overflow:hidden;">'
+                f'<div style="background:{bar_color};height:100%;width:{pct}%;'
+                f'border-radius:999px;transition:width .5s;"></div></div>'
+                f'<span style="font-size:0.72rem;font-weight:700;color:{bar_color};'
+                f'min-width:32px;">%{int(pct)}</span></div>'
+                f'<div style="display:flex;gap:0.4rem;flex-wrap:wrap;">{badges_html}</div>'
+                f'</div>'
             )
+            col.markdown(card_html, unsafe_allow_html=True)
+
+
+
 
 
 # ── Active task highlight card ─────────────────────────────────────────────────

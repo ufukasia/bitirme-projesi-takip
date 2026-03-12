@@ -93,8 +93,15 @@ html, body, [class*="css"] {
     margin-left: auto; font-size: 0.72rem;
     color: #a8c8f0; font-style: italic; font-weight: 300;
 }
+/* Hide Streamlit's native white header toolbar */
+[data-testid="stHeader"] {
+    visibility: hidden !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+}
+
 [data-testid="stAppViewContainer"] > section:first-child { padding-top: 3.6rem !important; }
-[data-testid="stHeader"] { top: 2.9rem !important; }
 
 /* ═══════════════════════════════════════════════════════════════
    SIDEBAR

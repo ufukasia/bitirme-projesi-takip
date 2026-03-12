@@ -154,7 +154,7 @@ def render_leader_panel(
     dependency_map: Dict[str, Optional[int]] = {_t("Yok"): None}
     for _, row in existing_tasks.iterrows():
         dependency_map[f"#{int(row['id'])} - {row['title']}"] = int(row["id"])
-    milestone_map = {label: key for key, label in MILESTONES}
+    milestone_map = {_t(label): key for key, label in MILESTONES}
 
     with st.form(f"new_task_form_{project_name}"):
         col_t1, col_t2 = st.columns(2)
@@ -201,7 +201,7 @@ def render_leader_panel(
     # Task list with inline status badges
     rows_html = ""
     for _, t in tasks_df.iterrows():
-        ms_label = MILESTONE_LABELS.get(str(t["milestone_key"]), str(t["milestone_key"]))
+        ms_label = _t(MILESTONE_LABELS.get(str(t["milestone_key"]), str(t["milestone_key"])))
         # Find assignee name
         assignee_no = str(t.get("assignee_student_no", ""))
         assignee_row = roster[roster["student_no"].astype(str) == assignee_no]

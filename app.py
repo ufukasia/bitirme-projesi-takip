@@ -8,12 +8,13 @@ from typing import Optional
 
 import streamlit as st
 
-from constants import DEFAULT_LANGUAGE, LANGUAGE_STATE_KEY, MIN_PASSWORD_LEN
+from constants import DB_PATH, DEFAULT_LANGUAGE, DEFAULT_PASSWORD, LANGUAGE_STATE_KEY, MIN_PASSWORD_LEN
 from db import get_conn
 from i18n import is_english_ui, patch_streamlit_i18n, render_language_selector
 from models import (
     authenticate_user,
     bootstrap_defaults,
+    clear_runtime_data,
     get_leader,
     get_roster_from_db,
     get_student_memberships,
@@ -86,8 +87,8 @@ def render_login_form(conn) -> None:
             st.rerun()
 
         st.markdown(
-            "<div style='text-align:center;margin-top:1rem;font-size:0.74rem;color:#94a3b8;'>"
-            "İlk giriş şifresi sistem yöneticinizden alınır.<br>Giriş sonrası şifrenizi değiştirmeniz zorunludur."
+            f"<div style='text-align:center;margin-top:1rem;font-size:0.74rem;color:#94a3b8;'>"
+            f"Ilk giris sifresi: <code>{DEFAULT_PASSWORD}</code><br>Giris sonrasi sifrenizi degistirmeniz zorunludur."
             "</div>",
             unsafe_allow_html=True,
         )
@@ -107,14 +108,19 @@ def enforce_password_change(conn, auth_user: dict) -> bool:
     if submitted:
         if len(new_password) < MIN_PASSWORD_LEN:
             st.error(f"Sifre en az {MIN_PASSWORD_LEN} karakter olmali.")
+        elif new_password == DEFAULT_PASSWORD:
+            st.error("Varsayilan sifreyi kullanamazsiniz.")
         elif new_password != confirm_password:
             st.error("Sifreler eslesmiyor.")
         else:
-            update_password(conn, auth_user["user_id"], auth_user["role"], new_password)
-            auth_user["force_password_change"] = False
-            st.session_state["auth_user"] = auth_user
-            st.success("Sifre guncellendi.")
-            st.rerun()
+            try:
+                update_password(conn, auth_user["user_id"], auth_user["role"], new_password)
+                auth_user["force_password_change"] = False
+                st.session_state["auth_user"] = auth_user
+                st.success("Sifre guncellendi.")
+                st.rerun()
+            except ValueError as exc:
+                st.error(str(exc))
     return True
 
 
@@ -167,7 +173,7 @@ def main() -> None:
     st.title("🗂️ Bitirme Proje Takip Uygulaması")
 
     # ── DB setup ──────────────────────────────────────────────────────────────
-    db_path = "project_tracker.db"
+    db_path = DB_PATH
     with st.sidebar:
         st.caption(f"Veritabani: {db_path}")
     conn = get_conn(db_path)
@@ -221,11 +227,22 @@ def main() -> None:
                 unsafe_allow_html=True,
             )
             reset = False
+            clear_runtime = False
             if admin_mode:
                 with st.expander("⚠️ Veritabanı Sıfırlama"):
                     st.warning("Bu işlem tüm verileri silecektir!")
                     confirm_reset = st.checkbox("Veritabanını silmek istediğimden eminm", key="reset_confirm")
                     reset = st.button("Veritabanını Sıfırla", disabled=not confirm_reset)
+                    st.markdown("---")
+                    st.info("Bu islem ogrenci ve danisman kayitlarini korur; sadece gorev, haftalik guncelleme, geri bildirim ve yorum verilerini temizler.")
+                    confirm_runtime_clear = st.checkbox(
+                        "Deneme verilerini temizlemek istedigimden eminim",
+                        key="runtime_clear_confirm",
+                    )
+                    clear_runtime = st.button(
+                        "Deneme Verilerini Temizle",
+                        disabled=not confirm_runtime_clear,
+                    )
             if st.button("🚪 Çıkış Yap",width="stretch"):
                 clear_auth_session()
                 st.rerun()
@@ -240,6 +257,16 @@ def main() -> None:
             st.cache_data.clear()
             clear_auth_session()
             st.success(f"Veritabani sifirlandi. Yedek: {backup_name}")
+            st.rerun()
+
+        if clear_runtime:
+            db_file = Path(db_path)
+            backup_name = f"project_tracker.runtime-clear.{datetime.now().strftime('%Y%m%d_%H%M%S')}.backup.db"
+            if db_file.exists():
+                shutil.copy2(db_file, db_file.parent / backup_name)
+            clear_runtime_data(conn)
+            st.cache_data.clear()
+            st.success(f"Deneme verileri temizlendi. Yedek: {backup_name}")
             st.rerun()
 
         render_advisor_panel(conn, selected_advisor, roster)

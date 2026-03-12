@@ -154,7 +154,7 @@ def render_student_panel(
         # Task list with inline status chips
         rows_html = ""
         for _, t in ordered.iterrows():
-            ms_label = MILESTONE_LABELS.get(str(t["milestone_key"]), str(t["milestone_key"]))
+            ms_label = _t(MILESTONE_LABELS.get(str(t["milestone_key"]), str(t["milestone_key"])))
             badge = status_badge_html(str(t["status"]))
             deadline = str(t.get("deadline", "") or "—")
             dl_color = "#dc2626" if deadline != "—" else "#94a3b8"
@@ -186,7 +186,7 @@ def render_student_panel(
                 unsafe_allow_html=True,
             )
         else:
-            current_milestone = MILESTONE_LABELS.get(str(task_row["milestone_key"]), str(task_row["milestone_key"]))
+            current_milestone = _t(MILESTONE_LABELS.get(str(task_row["milestone_key"]), str(task_row["milestone_key"])))
             st.markdown(
                 f"""<div style="background:#fef3c7;border-left:4px solid #d97706;border-radius:4px 10px 10px 4px;
                                padding:.6rem .9rem;margin-bottom:.5rem;font-size:.82rem;color:#78350f;">

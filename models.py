@@ -168,6 +168,114 @@ def upsert_students(conn, roster: pd.DataFrame) -> int:
                 current_row_nos,
             )
         conn.commit()
+    sync_projects_catalog(conn)
+    return len(records)
+
+
+def sync_projects_catalog(conn) -> int:
+    """Keep the project catalog aligned with the current students table."""
+    ts = now_ts()
+    projects = fetch_df(
+        conn,
+        """
+        SELECT project_name, MIN(advisor_name) AS advisor_name
+        FROM students
+        WHERE project_name <> ''
+        GROUP BY project_name
+        """,
+    )
+    rows = [
+        (str(row["project_name"]).strip(), str(row["advisor_name"]).strip() or DEFAULT_ADVISOR, ts, ts)
+        for _, row in projects.iterrows()
+    ]
+    with db_lock():
+        if rows:
+            conn.executemany(
+                """
+                INSERT INTO projects(project_name, advisor_name, created_at, updated_at)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(project_name) DO UPDATE SET
+                    advisor_name = excluded.advisor_name,
+                    updated_at = excluded.updated_at
+                """,
+                rows,
+            )
+            placeholders = ",".join(["?"] * len(rows))
+            conn.execute(f"DELETE FROM projects WHERE project_name NOT IN ({placeholders})", [r[0] for r in rows])
+        else:
+            conn.execute("DELETE FROM projects")
+        conn.commit()
+    return len(rows)
+
+
+def upsert_students_for_advisor(conn, advisor_name: str, roster: pd.DataFrame) -> int:
+    """Safely replace only the current advisor's roster from an uploaded CSV."""
+    advisor = str(advisor_name).strip()
+    scoped = roster.copy()
+    scoped["advisor_name"] = scoped["advisor_name"].astype(str).str.strip()
+    mismatched = scoped[(scoped["advisor_name"] != "") & (scoped["advisor_name"] != advisor)]
+    if not mismatched.empty:
+        found = sorted(mismatched["advisor_name"].unique().tolist())
+        raise ValueError(f"CSV sadece '{advisor}' danismaninin kayitlarini icermeli. Bulunan farkli danismanlar: {', '.join(found)}")
+
+    scoped["advisor_name"] = advisor
+    ts = now_ts()
+    records = [
+        (
+            str(row["student_no"]).strip(),
+            int(row["row_no"]),
+            str(row["student_name"]).strip(),
+            str(row["project_name"]).strip(),
+            advisor,
+            str(row["program"]).strip(),
+            ts,
+            ts,
+        )
+        for _, row in scoped.iterrows()
+    ]
+    row_nos = [r[1] for r in records]
+    if row_nos:
+        placeholders = ",".join(["?"] * len(row_nos))
+        conflict_rows = fetch_df(
+            conn,
+            f"""
+            SELECT row_no, advisor_name
+            FROM students
+            WHERE row_no IN ({placeholders}) AND advisor_name <> ?
+            """,
+            tuple(row_nos + [advisor]),
+        )
+        if not conflict_rows.empty:
+            collisions = ", ".join(str(int(v)) for v in conflict_rows["row_no"].tolist())
+            raise ValueError(f"CSV icindeki satir numaralari baska danisman kayitlariyla cakisiyor: {collisions}")
+
+    with db_lock():
+        if records:
+            conn.executemany(
+                """
+                INSERT INTO students(
+                    student_no, row_no, student_name, project_name, advisor_name, program, created_at, updated_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(row_no) DO UPDATE SET
+                    student_no = excluded.student_no,
+                    student_name = excluded.student_name,
+                    project_name = excluded.project_name,
+                    advisor_name = excluded.advisor_name,
+                    program = excluded.program,
+                    updated_at = excluded.updated_at
+                """,
+                records,
+            )
+            placeholders = ",".join(["?"] * len(row_nos))
+            conn.execute(
+                f"DELETE FROM students WHERE advisor_name = ? AND row_no NOT IN ({placeholders})",
+                [advisor, *row_nos],
+            )
+        else:
+            conn.execute("DELETE FROM students WHERE advisor_name = ?", (advisor,))
+        conn.commit()
+    sync_projects_catalog(conn)
     return len(records)
 
 
@@ -242,6 +350,7 @@ def add_single_student(
             ),
         )
         conn.commit()
+    sync_projects_catalog(conn)
     return new_row_no
 
 
@@ -371,6 +480,8 @@ def authenticate_user(conn, user_id: str, role: str, password: str) -> Optional[
 
 
 def update_password(conn, user_id: str, role: str, new_password: str) -> None:
+    if new_password == DEFAULT_PASSWORD:
+        raise ValueError("Varsayilan sifreyi kullanamazsiniz.")
     with db_lock():
         conn.execute(
             "UPDATE auth_users SET password_hash = ?, force_password_change = 0, updated_at = ? WHERE user_id = ? AND role = ?",
@@ -398,12 +509,91 @@ def reset_password_to_default(conn, user_id: str, role: str) -> bool:
 # Leaders & Member Roles
 # ═══════════════════════════════════════════════════════════════
 
+def clear_runtime_data(conn) -> None:
+    """Delete project activity records while keeping students and auth users."""
+    with db_lock():
+        conn.execute("DELETE FROM task_comments")
+        conn.execute("DELETE FROM weekly_updates")
+        conn.execute("DELETE FROM advisor_feedback")
+        conn.execute("DELETE FROM tasks")
+        conn.execute(
+            "DELETE FROM sqlite_sequence WHERE name IN ('tasks', 'weekly_updates', 'advisor_feedback', 'task_comments')"
+        )
+        conn.commit()
+
+
+def rename_project(conn, advisor_name: str, old_project_name: str, new_project_name: str) -> tuple[bool, str]:
+    old_name = str(old_project_name).strip()
+    new_name = str(new_project_name).strip()
+    advisor = str(advisor_name).strip()
+
+    if not old_name or not new_name:
+        return False, "Proje adi bos olamaz."
+    if old_name == new_name:
+        return False, "Yeni proje adi mevcut adla ayni."
+
+    owned_count = conn.execute(
+        "SELECT COUNT(*) AS cnt FROM students WHERE advisor_name = ? AND project_name = ?",
+        (advisor, old_name),
+    ).fetchone()["cnt"]
+    if int(owned_count) == 0:
+        return False, "Bu proje bu danismana ait degil."
+
+    foreign_count = conn.execute(
+        "SELECT COUNT(*) AS cnt FROM students WHERE advisor_name <> ? AND project_name = ?",
+        (advisor, old_name),
+    ).fetchone()["cnt"]
+    if int(foreign_count) > 0:
+        return False, "Bu proje adi baska danisman kayitlarinda da kullaniliyor."
+
+    target_exists = conn.execute(
+        "SELECT COUNT(*) AS cnt FROM students WHERE project_name = ?",
+        (new_name,),
+    ).fetchone()["cnt"]
+    if int(target_exists) > 0:
+        return False, "Bu proje adi zaten kullaniliyor."
+
+    ts = now_ts()
+    with db_lock():
+        conn.execute(
+            """
+            INSERT INTO projects(project_name, advisor_name, created_at, updated_at)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(project_name) DO UPDATE SET
+                advisor_name = excluded.advisor_name,
+                updated_at = excluded.updated_at
+            """,
+            (new_name, advisor, ts, ts),
+        )
+        conn.execute(
+            "UPDATE students SET project_name = ?, updated_at = ? WHERE advisor_name = ? AND project_name = ?",
+            (new_name, ts, advisor, old_name),
+        )
+        conn.execute("UPDATE leaders SET project_name = ?, assigned_at = ? WHERE project_name = ?", (new_name, ts, old_name))
+        conn.execute("UPDATE member_roles SET project_name = ?, updated_at = ? WHERE project_name = ?", (new_name, ts, old_name))
+        conn.execute("UPDATE tasks SET project_name = ?, updated_at = ? WHERE project_name = ?", (new_name, ts, old_name))
+        conn.execute("UPDATE weekly_updates SET project_name = ? WHERE project_name = ?", (new_name, old_name))
+        conn.execute("UPDATE advisor_feedback SET project_name = ? WHERE project_name = ?", (new_name, old_name))
+        conn.execute("UPDATE task_comments SET project_name = ? WHERE project_name = ?", (new_name, old_name))
+        conn.execute("DELETE FROM projects WHERE project_name = ?", (old_name,))
+        conn.commit()
+    sync_projects_catalog(conn)
+    return True, "Proje adi guncellendi."
+
+
+def _project_exists(conn, project_name: str) -> bool:
+    row = conn.execute("SELECT 1 FROM projects WHERE project_name = ?", (project_name,)).fetchone()
+    return row is not None
+
+
 def get_leader(conn, project_name: str) -> Optional[str]:
     row = conn.execute("SELECT student_no FROM leaders WHERE project_name = ?", (project_name,)).fetchone()
     return row["student_no"] if row else None
 
 
 def set_leader(conn, project_name: str, student_no: str, assigned_by: str) -> None:
+    if not _project_exists(conn, project_name):
+        raise ValueError("Proje bulunamadi.")
     with db_lock():
         conn.execute(
             """
@@ -420,6 +610,8 @@ def set_leader(conn, project_name: str, student_no: str, assigned_by: str) -> No
 
 
 def upsert_role(conn, project_name: str, student_no: str, role: str, responsibility: str) -> None:
+    if not _project_exists(conn, project_name):
+        raise ValueError("Proje bulunamadi.")
     with db_lock():
         conn.execute(
             """
@@ -569,6 +761,8 @@ def create_task(
     evidence_required: str,
     created_by: str,
 ) -> None:
+    if not _project_exists(conn, project_name):
+        raise ValueError("Proje bulunamadi.")
     ts = now_ts()
     with db_lock():
         conn.execute(
@@ -676,19 +870,46 @@ def add_weekly_update(
     next_step: str,
     evidence_link: str,
 ) -> None:
+    if not _project_exists(conn, project_name):
+        raise ValueError("Proje bulunamadi.")
+    existing = conn.execute(
+        """
+        SELECT id
+        FROM weekly_updates
+        WHERE project_name = ? AND student_no = ? AND COALESCE(task_id, -1) = COALESCE(?, -1) AND week_start = ?
+        """,
+        (project_name, student_no, task_id, week_start),
+    ).fetchone()
     with db_lock():
-        conn.execute(
-            """
-            INSERT INTO weekly_updates(
-                project_name, student_no, task_id, week_start, completed,
-                blockers, next_step, evidence_link, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                project_name, student_no, task_id, week_start,
-                completed.strip(), blockers.strip(), next_step.strip(), evidence_link.strip(), now_ts(),
-            ),
-        )
+        if existing:
+            conn.execute(
+                """
+                UPDATE weekly_updates
+                SET completed = ?, blockers = ?, next_step = ?, evidence_link = ?, created_at = ?
+                WHERE id = ?
+                """,
+                (
+                    completed.strip(),
+                    blockers.strip(),
+                    next_step.strip(),
+                    evidence_link.strip(),
+                    now_ts(),
+                    int(existing["id"]),
+                ),
+            )
+        else:
+            conn.execute(
+                """
+                INSERT INTO weekly_updates(
+                    project_name, student_no, task_id, week_start, completed,
+                    blockers, next_step, evidence_link, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    project_name, student_no, task_id, week_start,
+                    completed.strip(), blockers.strip(), next_step.strip(), evidence_link.strip(), now_ts(),
+                ),
+            )
         conn.commit()
 
 
@@ -730,6 +951,8 @@ def add_feedback(
     action_item: str,
     revision_required: bool,
 ) -> None:
+    if not _project_exists(conn, project_name):
+        raise ValueError("Proje bulunamadi.")
     with db_lock():
         conn.execute(
             """
@@ -766,6 +989,8 @@ def add_task_comment(
     author_role: str,
     comment: str,
 ) -> None:
+    if not _project_exists(conn, project_name):
+        raise ValueError("Proje bulunamadi.")
     with db_lock():
         conn.execute(
             """

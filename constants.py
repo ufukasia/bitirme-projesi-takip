@@ -75,12 +75,15 @@ PRIORITY_OPTIONS = ["Dusuk", "Orta", "Yuksek"]
 
 # ── Milestones ────────────────────────────────────────────────────────────────
 MILESTONES: list[tuple[str, str]] = [
-    ("M1", "Literatur taramasi"),
-    ("M2", "Algoritma ve uygulama plani"),
-    ("M3", "Uygulamayi boot etme"),
-    ("M4", "Uygulamayi deneme ve sonuclari degerlendirme"),
-    ("M5", "Hatalari duzeltme ve tekrar deneme"),
-    ("M6", "Proje yazimi ve final rapor"),
+    ("M1", "Problem Tanimi, Amac ve Kapsamin Belirlenmesi"),
+    ("M2", "Alan Analizi, Literatur Taramasi ve Benzer Sistem Incelemesi"),
+    ("M3", "Yazilim Sureci ve Proje Yonetim Yapisinin Olusturulmasi"),
+    ("M4", "Gereksinim Analizi ve Sistem Ozelliklerinin Belirlenmesi"),
+    ("M5", "Sistem Modellemesi ve Analiz Tasariminin Tamamlanmasi"),
+    ("M6", "Sistem Mimarisi ve Yazilim Tasariminin Olusturulmasi"),
+    ("M7", "Uygulama Gelistirme ve MVP Surumunun Tamamlanmasi"),
+    ("M8", "Test, Dogrulama ve Iyilestirme Surecinin Tamamlanmasi"),
+    ("M9", "Sonuclarin Degerlendirilmesi ve Final Tesliminin Hazirlanmasi"),
 ]
 MILESTONE_LABELS: dict[str, str] = {key: label for key, label in MILESTONES}
 MILESTONE_ORDER: dict[str, int] = {key: idx for idx, (key, _) in enumerate(MILESTONES)}

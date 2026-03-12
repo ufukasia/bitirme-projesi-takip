@@ -228,12 +228,15 @@ SEGMENT_TRANSLATIONS_TR_EN: list[tuple[str, str]] = [
     ("CSV okuma hatasi:", "CSV read error:"),
     ("Kanit dosyasi: #", "Evidence file: #"),
     (" | Gorev:", " | Task:"),
-    ("Literatur taramasi", "Literature review"),
-    ("Algoritma ve uygulama plani", "Algorithm and implementation plan"),
-    ("Uygulamayi boot etme", "Bootstrapping the application"),
-    ("Uygulamayi deneme ve sonuclari degerlendirme", "Testing the application and evaluating results"),
-    ("Hatalari duzeltme ve tekrar deneme", "Fixing errors and retrying"),
-    ("Proje yazimi ve final rapor", "Project writing and final report"),
+    ("Problem Tanimi, Amac ve Kapsamin Belirlenmesi", "Defining the Problem, Objectives, and Scope"),
+    ("Alan Analizi, Literatur Taramasi ve Benzer Sistem Incelemesi", "Domain Analysis, Literature Review, and Similar System Review"),
+    ("Yazilim Sureci ve Proje Yonetim Yapisinin Olusturulmasi", "Establishing the Software Process and Project Management Structure"),
+    ("Gereksinim Analizi ve Sistem Ozelliklerinin Belirlenmesi", "Requirements Analysis and Identification of System Features"),
+    ("Sistem Modellemesi ve Analiz Tasariminin Tamamlanmasi", "Completing System Modeling and Analysis Design"),
+    ("Sistem Mimarisi ve Yazilim Tasariminin Olusturulmasi", "Designing the System Architecture and Software Design"),
+    ("Uygulama Gelistirme ve MVP Surumunun Tamamlanmasi", "Application Development and Completion of the MVP Version"),
+    ("Test, Dogrulama ve Iyilestirme Surecinin Tamamlanmasi", "Completion of the Testing, Validation, and Improvement Process"),
+    ("Sonuclarin Degerlendirilmesi ve Final Tesliminin Hazirlanmasi", "Evaluation of Results and Preparation of the Final Submission"),
     (" ogrenci kaydi bulundu.", " student records found."),
     (" ogrenci kaydi guncellendi.", " student records updated."),
     ("Siradaki zorunlu gorev:", "Next required task:"),
@@ -326,7 +329,10 @@ def translate_text_for_language(value: str, language: str) -> str:
     for src, dst in TOKEN_TRANSLATIONS_TR_EN.items():
         text = re.sub(rf"\b{re.escape(src)}\b", dst, text)
     for src, dst in TEXT_CLEANUPS_EN:
-        text = text.replace(src, dst)
+        if src.replace(" ", "").isalpha():
+            text = re.sub(rf"\b{re.escape(src)}\b", dst, text)
+        else:
+            text = text.replace(src, dst)
     text = re.sub(r"\s{2,}", " ", text)
     return text
 

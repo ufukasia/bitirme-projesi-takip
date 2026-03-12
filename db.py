@@ -124,6 +124,159 @@ def _ensure_students_schema(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
+def _ensure_projects_schema(conn: sqlite3.Connection) -> None:
+    conn.executescript(
+        """
+        CREATE TABLE IF NOT EXISTS projects (
+            project_name TEXT PRIMARY KEY,
+            advisor_name TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_projects_advisor ON projects(advisor_name);
+        """
+    )
+    ts = now_ts()
+    conn.execute(
+        """
+        INSERT INTO projects(project_name, advisor_name, created_at, updated_at)
+        SELECT project_name, MIN(advisor_name), ?, ?
+        FROM students
+        WHERE project_name <> ''
+        GROUP BY project_name
+        ON CONFLICT(project_name) DO UPDATE SET
+            advisor_name = excluded.advisor_name,
+            updated_at = excluded.updated_at
+        """,
+        (ts, ts),
+    )
+    conn.execute("DELETE FROM projects WHERE project_name NOT IN (SELECT DISTINCT project_name FROM students WHERE project_name <> '')")
+    conn.commit()
+
+
+def _ensure_weekly_update_uniqueness(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        DELETE FROM weekly_updates
+        WHERE id NOT IN (
+            SELECT MAX(id)
+            FROM weekly_updates
+            GROUP BY project_name, student_no, IFNULL(task_id, -1), week_start
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_weekly_updates_unique
+        ON weekly_updates(project_name, student_no, IFNULL(task_id, -1), week_start)
+        """
+    )
+    conn.commit()
+
+
+def _ensure_integrity_triggers(conn: sqlite3.Connection) -> None:
+    conn.executescript(
+        """
+        CREATE TRIGGER IF NOT EXISTS trg_leaders_project_insert
+        BEFORE INSERT ON leaders
+        FOR EACH ROW
+        WHEN NOT EXISTS (SELECT 1 FROM projects WHERE project_name = NEW.project_name)
+        BEGIN
+            SELECT RAISE(ABORT, 'Unknown project_name in leaders');
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS trg_leaders_project_update
+        BEFORE UPDATE OF project_name ON leaders
+        FOR EACH ROW
+        WHEN NOT EXISTS (SELECT 1 FROM projects WHERE project_name = NEW.project_name)
+        BEGIN
+            SELECT RAISE(ABORT, 'Unknown project_name in leaders');
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS trg_member_roles_project_insert
+        BEFORE INSERT ON member_roles
+        FOR EACH ROW
+        WHEN NOT EXISTS (SELECT 1 FROM projects WHERE project_name = NEW.project_name)
+        BEGIN
+            SELECT RAISE(ABORT, 'Unknown project_name in member_roles');
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS trg_member_roles_project_update
+        BEFORE UPDATE OF project_name ON member_roles
+        FOR EACH ROW
+        WHEN NOT EXISTS (SELECT 1 FROM projects WHERE project_name = NEW.project_name)
+        BEGIN
+            SELECT RAISE(ABORT, 'Unknown project_name in member_roles');
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS trg_tasks_project_insert
+        BEFORE INSERT ON tasks
+        FOR EACH ROW
+        WHEN NOT EXISTS (SELECT 1 FROM projects WHERE project_name = NEW.project_name)
+        BEGIN
+            SELECT RAISE(ABORT, 'Unknown project_name in tasks');
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS trg_tasks_project_update
+        BEFORE UPDATE OF project_name ON tasks
+        FOR EACH ROW
+        WHEN NOT EXISTS (SELECT 1 FROM projects WHERE project_name = NEW.project_name)
+        BEGIN
+            SELECT RAISE(ABORT, 'Unknown project_name in tasks');
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS trg_weekly_updates_project_insert
+        BEFORE INSERT ON weekly_updates
+        FOR EACH ROW
+        WHEN NOT EXISTS (SELECT 1 FROM projects WHERE project_name = NEW.project_name)
+        BEGIN
+            SELECT RAISE(ABORT, 'Unknown project_name in weekly_updates');
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS trg_weekly_updates_project_update
+        BEFORE UPDATE OF project_name ON weekly_updates
+        FOR EACH ROW
+        WHEN NOT EXISTS (SELECT 1 FROM projects WHERE project_name = NEW.project_name)
+        BEGIN
+            SELECT RAISE(ABORT, 'Unknown project_name in weekly_updates');
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS trg_feedback_project_insert
+        BEFORE INSERT ON advisor_feedback
+        FOR EACH ROW
+        WHEN NOT EXISTS (SELECT 1 FROM projects WHERE project_name = NEW.project_name)
+        BEGIN
+            SELECT RAISE(ABORT, 'Unknown project_name in advisor_feedback');
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS trg_feedback_project_update
+        BEFORE UPDATE OF project_name ON advisor_feedback
+        FOR EACH ROW
+        WHEN NOT EXISTS (SELECT 1 FROM projects WHERE project_name = NEW.project_name)
+        BEGIN
+            SELECT RAISE(ABORT, 'Unknown project_name in advisor_feedback');
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS trg_comments_project_insert
+        BEFORE INSERT ON task_comments
+        FOR EACH ROW
+        WHEN NOT EXISTS (SELECT 1 FROM projects WHERE project_name = NEW.project_name)
+        BEGIN
+            SELECT RAISE(ABORT, 'Unknown project_name in task_comments');
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS trg_comments_project_update
+        BEFORE UPDATE OF project_name ON task_comments
+        FOR EACH ROW
+        WHEN NOT EXISTS (SELECT 1 FROM projects WHERE project_name = NEW.project_name)
+        BEGIN
+            SELECT RAISE(ABORT, 'Unknown project_name in task_comments');
+        END;
+        """
+    )
+    conn.commit()
+
+
 def _init_db(conn: sqlite3.Connection) -> None:
     conn.executescript(
         """
@@ -212,6 +365,7 @@ def _init_db(conn: sqlite3.Connection) -> None:
         );
         CREATE INDEX IF NOT EXISTS idx_students_advisor ON students(advisor_name);
         CREATE INDEX IF NOT EXISTS idx_students_project ON students(project_name);
+        CREATE INDEX IF NOT EXISTS idx_auth_user_role_active ON auth_users(role, is_active, user_id);
         CREATE INDEX IF NOT EXISTS idx_auth_role ON auth_users(role);
         CREATE INDEX IF NOT EXISTS idx_tasks_project ON tasks(project_name);
         CREATE INDEX IF NOT EXISTS idx_updates_project ON weekly_updates(project_name);
@@ -220,9 +374,12 @@ def _init_db(conn: sqlite3.Connection) -> None:
     )
     conn.commit()
     _ensure_students_schema(conn)
+    _ensure_projects_schema(conn)
     # Migrate: add evidence_file column if it doesn't exist yet
     try:
         conn.execute("ALTER TABLE tasks ADD COLUMN evidence_file TEXT DEFAULT ''")
         conn.commit()
     except Exception:
         pass
+    _ensure_weekly_update_uniqueness(conn)
+    _ensure_integrity_triggers(conn)

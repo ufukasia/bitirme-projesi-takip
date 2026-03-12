@@ -111,7 +111,9 @@ def render_task_comments(
 # ── Milestone progress ─────────────────────────────────────────────────────────
 
 def render_milestone_progress(tasks_df: pd.DataFrame) -> None:
-    st.markdown("#### 📊 Milestone İlerlemesi")
+    from i18n import translate_text
+
+    st.markdown(f"#### 📊 {translate_text('Milestone İlerlemesi')}")
     cols = st.columns(len(MILESTONES))
     for col, (milestone_key, label) in zip(cols, MILESTONES):
         scoped = tasks_df[tasks_df["milestone_key"] == milestone_key]
@@ -128,7 +130,7 @@ def render_milestone_progress(tasks_df: pd.DataFrame) -> None:
         else:
             bar_color, text_color, bg = "#94a3b8", "#475569", "#f1f5f9"
 
-        short_label = milestone_key  # M1-M6
+        short_label = milestone_key
         col.markdown(
             f"""
             <div style="background:{bg};border-radius:10px;padding:0.65rem 0.7rem;text-align:center;height:100%;">
