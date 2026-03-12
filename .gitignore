@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+.venv/
+venv/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Environment variables — NEVER commit this
+.env
+
+# Streamlit
+.streamlit/
+
+# Database files (keep .db.example if you want a demo DB, not the real one)
+*.db
+*.db-shm
+*.db-wal
+*.backup.db
+
+# Uploaded evidence files
+uploads/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

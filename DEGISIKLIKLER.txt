@@ -1,0 +1,116 @@
+========================================================
+  BİTİRME PROJESİ TAKİP — Yapılan Değişiklikler
+  Tarih: 10 Mart 2026
+========================================================
+
+--------------------------------------------------------
+1. BUG TARAMASI (Bug Report)
+--------------------------------------------------------
+Projenin tek dosyalık app.py'si (2816 satır) tarandı ve
+15 hata/sorun tespit edildi:
+
+KRITIK:
+  - BUG-01: Varsayılan şifre "12345" kaynak kodunda ve
+            UI'da açıkça yazılıydı (güvenlik açığı).
+  - BUG-02: Veritabanı yazma işlemlerinin büyük çoğunluğu
+            thread lock kullanmıyordu → veri bozulma riski.
+  - BUG-03: Kanıt dosyaları yerel klasöre kaydediliyordu;
+            sunucu yeniden başlatıldığında tüm linkler kırılır.
+
+YUKSEK:
+  - BUG-04: load_roster ve load_roster_from_upload aynı
+            ~50 satırlık kodu kopyala-yapıştır içeriyordu.
+  - BUG-05: sync_auth_users() her Streamlit yenilemesinde
+            çalışıyordu (çok yavaş ve gereksiz).
+  - BUG-06: Tip hatası: student_no: str = None
+  - BUG-07: Gecikme hesabı yerel saat vs. timezone-naive
+            tarihlerini karşılaştırıyordu.
+  - BUG-08: allowed_status_options() boş liste döndürebilir
+            → IndexError crash.
+  - BUG-09: Öğrenci no arama (.contains) ile filtreleme
+            (==) tutarsızdı.
+
+ORTA / DUSUK:
+  - BUG-10: File uploader form dışında → dosya kaybı riski.
+  - BUG-11: Lambda-in-loop (kırılgan kalıp).
+  - BUG-12: Dil değiştirince tüm form verileri siliniyor.
+  - BUG-13: render_login_form dönüş tipi yanlış (Optional[dict]).
+  - BUG-14: normalize_header'da üçlü encode edilmiş ölü kod.
+  - BUG-15: Çeviri önbelleği çalışırken hiç yenilenmiyor.
+
+--------------------------------------------------------
+2. KOD MODÜLERLEŞTIRME — app.py Parçalara Ayrıldı
+--------------------------------------------------------
+2816 satırlık tek dosya aşağıdaki yapıya bölündü:
+
+  bitirme-projesi-takip-main/
+  ├── app.py           (~200 satır) — Giriş noktası: sayfa
+  │                                   yapılandırması, kimlik
+  │                                   doğrulama, yönlendirme
+  ├── constants.py     — Tüm sabitler ve .env yüklemesi
+  ├── utils.py         — Şifre, string normalize, durum
+  ├── i18n.py          — Çeviri, dil seçici, Streamlit patch
+  ├── db.py            — SQLite bağlantısı, şema, sorgu
+  ├── models.py        — Tüm DB iş mantığı
+  ├── components.py    — Paylaşılan UI bileşenleri
+  └── panels/
+      ├── advisor.py   — Danışman paneli UI
+      ├── leader.py    — Grup lideri paneli UI
+      └── student.py   — Öğrenci paneli UI
+
+Aynı zamanda şu bug'lar düzeltildi:
+  ✓ BUG-04: _parse_roster_df() ortak fonksiyonu oluşturuldu
+  ✓ BUG-05: sync_auth_users() artık oturum başına bir kez
+             çalışır (_bootstrap_done session state flag)
+  ✓ BUG-02: Tüm DB yazma işlemleri db_lock() kullanıyor
+  ✓ BUG-08: allowed_status_options() artık güvenli fallback
+
+--------------------------------------------------------
+3. .ENV KONFIGÜRASYON DOSYASI EKLENDİ
+--------------------------------------------------------
+Hassas ve değiştirilebilir parametreler .env dosyasına
+taşındı. python-dotenv ile otomatik yüklenir.
+
+Desteklenen parametreler:
+  DB_PATH           = project_tracker.db
+  DEFAULT_PASSWORD  = 12345
+  MIN_PASSWORD_LEN  = 6
+  ADMIN_ADVISOR_KEYS= drufukasil,drufukasl
+  DEFAULT_ADVISOR   = Dr. UFUK ASIL
+  UPLOADS_DIR       = uploads
+  DEFAULT_LANGUAGE  = tr
+
+Yeni dosyalar:
+  .env            — Aktif konfigürasyon (git'e eklenmez!)
+  .env.example    — Takım arkadaşları için şablon
+
+--------------------------------------------------------
+4. SANAL ORTAM (VIRTUAL ENVIRONMENT) KURULUMU
+--------------------------------------------------------
+Proje bağımlılıkları izole bir .venv ortamına yüklendi.
+
+Kullanım:
+  cd bitirme-projesi-takip-main
+  source .venv/bin/activate
+  streamlit run app.py
+
+requirements.txt içeriği:
+  streamlit>=1.36
+  pandas>=2.0
+  python-dotenv>=1.0
+
+--------------------------------------------------------
+5. .GITIGNORE OLUŞTURULDU
+--------------------------------------------------------
+Şunlar git'e commit'lenmez:
+  .env              (şifreler ve gizli config)
+  .venv/ ve venv/   (sanal ortam)
+  *.db, *.db-shm    (veritabanı dosyaları)
+  uploads/          (öğrenci yüklediği kanıt dosyaları)
+  __pycache__/      (Python derleme dosyaları)
+
+========================================================
+  Uygulamayı çalıştırmak için:
+    source .venv/bin/activate
+    streamlit run app.py
+========================================================
