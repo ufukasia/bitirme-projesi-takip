@@ -48,12 +48,12 @@ def render_advisor_panel(conn, advisor_name: str, roster: pd.DataFrame) -> None:
     # ── Page title ────────────────────────────────────────────────────────────
     st.markdown(
         f"""
-        <div style="background:linear-gradient(135deg,#0a2342 0%,#1a3a6b 100%);
-                    border-radius:14px;padding:1.2rem 1.6rem;margin-bottom:1.2rem;
-                    box-shadow:0 4px 16px rgba(10,35,66,0.18);">
-            <div style="color:#ffd700;font-size:0.7rem;font-weight:700;letter-spacing:.1em;
+        <div style="background:linear-gradient(135deg,#ffffff 0%,#eef5fb 100%);
+                    border:1px solid #dbe5ef;border-radius:14px;padding:1.2rem 1.6rem;margin-bottom:1.2rem;
+                    box-shadow:0 4px 16px rgba(15,23,42,0.08);">
+            <div style="color:#0f4c81;font-size:0.7rem;font-weight:700;letter-spacing:.1em;
                         text-transform:uppercase;margin-bottom:0.2rem;">Danışman Paneli</div>
-            <div style="color:#ffffff;font-size:1.3rem;font-weight:800;">{advisor_name}</div>
+            <div style="color:#0f172a;font-size:1.3rem;font-weight:800;">{advisor_name}</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -234,7 +234,7 @@ def _render_student_detail(conn, roster, stu_rows, picked_no: str) -> None:
         <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;
                     padding:1rem 1.2rem;margin:0.75rem 0;">
             <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.6rem;">
-                <div style="width:42px;height:42px;background:linear-gradient(135deg,#0a2342,#1a3a6b);
+                <div style="width:42px;height:42px;background:linear-gradient(135deg,#dbeafe,#bfdbfe);
                             border-radius:50%;display:flex;align-items:center;justify-content:center;
                             font-size:1.1rem;flex-shrink:0;">🎓</div>
                 <div>

@@ -87,7 +87,7 @@ def render_login_form(conn) -> None:
             st.rerun()
 
         st.markdown(
-            f"<div style='text-align:center;margin-top:1rem;font-size:0.74rem;color:#94a3b8;'>"
+            f"<div style='text-align:center;margin-top:1rem;font-size:0.74rem;color:#64748b;'>"
             f"Ilk giris sifresi: <code>{DEFAULT_PASSWORD}</code><br>Giris sonrasi sifrenizi degistirmeniz zorunludur."
             "</div>",
             unsafe_allow_html=True,
@@ -217,11 +217,11 @@ def main() -> None:
             role_badge = "🛡️ Admin" if admin_mode else "👨‍🏫 Danışman"
             st.markdown(
                 f"""
-                <div style="background:rgba(255,255,255,0.07);border-radius:8px;padding:0.7rem 0.8rem;margin-bottom:0.5rem;">
-                    <div style="font-size:0.7rem;color:#a8c8f0;font-weight:600;text-transform:uppercase;letter-spacing:.05em;">Oturum</div>
-                    <div style="font-size:0.88rem;font-weight:700;color:#fff;margin-top:0.2rem;">{selected_advisor}</div>
-                    <div style="margin-top:0.3rem;"><span style="background:{'rgba(255,215,0,0.25)' if admin_mode else 'rgba(99,179,237,0.2)'};color:{'#ffd700' if admin_mode else '#90cdf4'};border-radius:999px;padding:0.1em 0.6em;font-size:0.7rem;font-weight:700;">{role_badge}</span></div>
-                    <div style="margin-top:0.4rem;font-size:0.73rem;color:#a8c8f0;">👥 {len(roster)} öğrenci &nbsp;·&nbsp; 📁 {roster['project_name'].nunique() if not roster.empty else 0} proje</div>
+                <div style="background:#ffffff;border:1px solid #dbe5ef;border-radius:8px;padding:0.7rem 0.8rem;margin-bottom:0.5rem;box-shadow:0 1px 4px rgba(15,23,42,0.06);">
+                    <div style="font-size:0.7rem;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.05em;">Oturum</div>
+                    <div style="font-size:0.88rem;font-weight:700;color:#0f172a;margin-top:0.2rem;">{selected_advisor}</div>
+                    <div style="margin-top:0.3rem;"><span style="background:{'#fef3c7' if admin_mode else '#dbeafe'};color:{'#92400e' if admin_mode else '#1d4ed8'};border-radius:999px;padding:0.1em 0.6em;font-size:0.7rem;font-weight:700;">{role_badge}</span></div>
+                    <div style="margin-top:0.4rem;font-size:0.73rem;color:#64748b;">👥 {len(roster)} öğrenci &nbsp;·&nbsp; 📁 {roster['project_name'].nunique() if not roster.empty else 0} proje</div>
                 </div>
                 """,
                 unsafe_allow_html=True,
@@ -303,13 +303,13 @@ def main() -> None:
     with st.sidebar:
         st.markdown(
             f"""
-            <div style="background:rgba(255,255,255,0.07);border-radius:8px;padding:0.7rem 0.8rem;margin-bottom:0.5rem;">
-                <div style="font-size:0.7rem;color:#a8c8f0;font-weight:600;text-transform:uppercase;letter-spacing:.05em;">Oturum</div>
-                <div style="font-size:0.88rem;font-weight:700;color:#fff;margin-top:0.2rem;">{auth_user['display_name']}</div>
-                <div style="font-size:0.73rem;color:#a8c8f0;margin-top:0.1rem;">{student_no}</div>
-                <div style="margin-top:0.3rem;"><span style="background:rgba(99,179,237,0.2);color:#90cdf4;border-radius:999px;padding:0.1em 0.6em;font-size:0.7rem;font-weight:700;">{role_label}</span></div>
-                <div style="margin-top:0.4rem;font-size:0.73rem;color:#a8c8f0;">📁 {selected_project}</div>
-                <div style="font-size:0.7rem;color:#7ab3e0;">👨‍🏫 {selected_advisor}</div>
+            <div style="background:#ffffff;border:1px solid #dbe5ef;border-radius:8px;padding:0.7rem 0.8rem;margin-bottom:0.5rem;box-shadow:0 1px 4px rgba(15,23,42,0.06);">
+                <div style="font-size:0.7rem;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.05em;">Oturum</div>
+                <div style="font-size:0.88rem;font-weight:700;color:#0f172a;margin-top:0.2rem;">{auth_user['display_name']}</div>
+                <div style="font-size:0.73rem;color:#64748b;margin-top:0.1rem;">{student_no}</div>
+                <div style="margin-top:0.3rem;"><span style="background:#dbeafe;color:#1d4ed8;border-radius:999px;padding:0.1em 0.6em;font-size:0.7rem;font-weight:700;">{role_label}</span></div>
+                <div style="margin-top:0.4rem;font-size:0.73rem;color:#64748b;">📁 {selected_project}</div>
+                <div style="font-size:0.7rem;color:#475569;">👨‍🏫 {selected_advisor}</div>
             </div>
             """,
             unsafe_allow_html=True,

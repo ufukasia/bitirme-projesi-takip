@@ -94,29 +94,29 @@ def render_student_panel(
 
     st.markdown(
         f"""
-        <div style="background:linear-gradient(135deg,#0a2342 0%,#1a3a6b 100%);
-                    border-radius:14px;padding:1.2rem 1.6rem;margin-bottom:1rem;
-                    box-shadow:0 4px 16px rgba(10,35,66,0.18);">
+        <div style="background:linear-gradient(135deg,#ffffff 0%,#eef5fb 100%);
+                    border:1px solid #dbe5ef;border-radius:14px;padding:1.2rem 1.6rem;margin-bottom:1rem;
+                    box-shadow:0 4px 16px rgba(15,23,42,0.08);">
             <div style="display:flex;align-items:flex-start;gap:1rem;">
-                <div style="width:52px;height:52px;background:rgba(255,215,0,0.15);border:2px solid #ffd700;
+                <div style="width:52px;height:52px;background:#dbeafe;border:2px solid #93c5fd;
                             border-radius:50%;display:flex;align-items:center;justify-content:center;
                             font-size:1.4rem;flex-shrink:0;">{role_icon}</div>
                 <div style="flex:1;min-width:0;">
-                    <div style="color:#ffd700;font-size:0.68rem;font-weight:700;letter-spacing:.1em;
+                    <div style="color:#0f4c81;font-size:0.68rem;font-weight:700;letter-spacing:.1em;
                                 text-transform:uppercase;">{_t('Öğrenci Paneli')}</div>
-                    <div style="color:#ffffff;font-size:1.2rem;font-weight:800;margin:0.1rem 0;">{student_name}</div>
-                    <div style="color:#a8c8f0;font-size:0.75rem;">{student_no} &nbsp;·&nbsp; {project_name}</div>
+                    <div style="color:#0f172a;font-size:1.2rem;font-weight:800;margin:0.1rem 0;">{student_name}</div>
+                    <div style="color:#64748b;font-size:0.75rem;">{student_no} &nbsp;·&nbsp; {project_name}</div>
                     <div style="margin-top:0.4rem;display:flex;gap:0.4rem;flex-wrap:wrap;">
                         <span style="background:{role_badge_bg};color:{role_badge_color};border-radius:999px;
                                      padding:.1em .6em;font-size:.7rem;font-weight:700;">{role_icon} {_t(student_role)}</span>
-                        <span style="background:rgba(255,255,255,0.1);color:#e2e8f0;border-radius:999px;
+                        <span style="background:#f8fafc;color:#475569;border:1px solid #dbe5ef;border-radius:999px;
                                      padding:.1em .6em;font-size:.7rem;">👨&#8205;🏫 {advisor_name}</span>
                     </div>
                 </div>
                 <div style="text-align:right;flex-shrink:0;">
-                    <div style="color:#ffd700;font-size:1.8rem;font-weight:900;line-height:1;">%{int(my_pct)}</div>
-                    <div style="color:#a8c8f0;font-size:0.68rem;">{_t('kişisel ilerleme')}</div>
-                    <div style="background:rgba(255,255,255,0.15);border-radius:999px;height:6px;
+                    <div style="color:#0f4c81;font-size:1.8rem;font-weight:900;line-height:1;">%{int(my_pct)}</div>
+                    <div style="color:#64748b;font-size:0.68rem;">{_t('kişisel ilerleme')}</div>
+                    <div style="background:#dbe5ef;border-radius:999px;height:6px;
                                 width:80px;margin-top:0.3rem;overflow:hidden;margin-left:auto;">
                         <div style="background:{bar_color};height:100%;width:{my_pct}%;border-radius:999px;
                                     transition:width .5s;"></div>
@@ -168,11 +168,11 @@ def render_student_panel(
         st.markdown(
             f"""<div style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;margin-bottom:.75rem;box-shadow:0 1px 4px rgba(0,0,0,.05);">
             <table style="width:100%;border-collapse:collapse;">
-            <thead><tr style="background:#0a2342;">
-            <th style="padding:.45rem .6rem;font-size:.7rem;color:#fff;text-align:left;letter-spacing:.05em;text-transform:uppercase;">Milestone</th>
-            <th style="padding:.45rem .6rem;font-size:.7rem;color:#fff;text-align:left;letter-spacing:.05em;text-transform:uppercase;">Görev</th>
-            <th style="padding:.45rem .6rem;font-size:.7rem;color:#fff;text-align:left;letter-spacing:.05em;text-transform:uppercase;">Durum</th>
-            <th style="padding:.45rem .6rem;font-size:.7rem;color:#fff;text-align:left;letter-spacing:.05em;text-transform:uppercase;">Deadline</th>
+            <thead><tr style="background:#eaf2f9;">
+            <th style="padding:.45rem .6rem;font-size:.7rem;color:#0f4c81;text-align:left;letter-spacing:.05em;text-transform:uppercase;">Milestone</th>
+            <th style="padding:.45rem .6rem;font-size:.7rem;color:#0f4c81;text-align:left;letter-spacing:.05em;text-transform:uppercase;">Görev</th>
+            <th style="padding:.45rem .6rem;font-size:.7rem;color:#0f4c81;text-align:left;letter-spacing:.05em;text-transform:uppercase;">Durum</th>
+            <th style="padding:.45rem .6rem;font-size:.7rem;color:#0f4c81;text-align:left;letter-spacing:.05em;text-transform:uppercase;">Deadline</th>
             </tr></thead><tbody>{rows_html}</tbody></table></div>""",
             unsafe_allow_html=True,
         )

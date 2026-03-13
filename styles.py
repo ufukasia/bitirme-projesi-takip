@@ -57,6 +57,12 @@ html, body, [class*="css"] {
     color: var(--text-primary);
 }
 
+body,
+[data-testid="stAppViewContainer"],
+[data-testid="stMain"] {
+    background: linear-gradient(180deg, #f8fbff 0%, #eef4fb 100%) !important;
+}
+
 /* Remove Streamlit default top padding */
 .block-container {
     padding-top: 1.5rem !important;
@@ -71,27 +77,27 @@ html, body, [class*="css"] {
     position: fixed;
     top: 0; left: 0; right: 0;
     z-index: 999999;
-    background: linear-gradient(90deg, #0a2342 0%, #1a3a6b 60%, #0f4c81 100%);
+    background: linear-gradient(90deg, #ffffff 0%, #f4f8fc 60%, #e9f1f8 100%);
     padding: 0.6rem 2rem;
     display: flex;
     align-items: center;
     gap: 0.85rem;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.4);
-    border-bottom: 2px solid var(--accent);
+    box-shadow: 0 2px 12px rgba(15, 23, 42, 0.08);
+    border-bottom: 1px solid #d7e3f0;
 }
 .otu-header .otu-icon { font-size: 1.6rem; line-height: 1; }
 .otu-header .otu-text-block { display: flex; flex-direction: column; line-height: 1.25; }
 .otu-header .otu-uni {
     font-size: 0.82rem; font-weight: 700;
-    color: var(--accent); letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--primary); letter-spacing: 0.06em; text-transform: uppercase;
 }
 .otu-header .otu-dept {
     font-size: 0.71rem; font-weight: 400;
-    color: #cce0ff; letter-spacing: 0.02em;
+    color: var(--text-secondary); letter-spacing: 0.02em;
 }
 .otu-header .otu-divider {
     margin-left: auto; font-size: 0.72rem;
-    color: #a8c8f0; font-style: italic; font-weight: 300;
+    color: var(--text-muted); font-style: italic; font-weight: 400;
 }
 /* Hide Streamlit's native white header toolbar */
 [data-testid="stHeader"] {
@@ -107,36 +113,36 @@ html, body, [class*="css"] {
    SIDEBAR
 ═══════════════════════════════════════════════════════════════ */
 [data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #0a2342 0%, #0f3460 100%) !important;
-    border-right: 1px solid rgba(255,215,0,0.2);
+    background: linear-gradient(180deg, #ffffff 0%, #f7fafd 100%) !important;
+    border-right: 1px solid #dbe5ef;
 }
 [data-testid="stSidebar"] * {
-    color: #e2e8f0 !important;
+    color: var(--text-primary) !important;
 }
 [data-testid="stSidebar"] .stCaption {
-    color: #a8c8f0 !important;
+    color: var(--text-secondary) !important;
     font-size: 0.78rem !important;
-    border-bottom: 1px solid rgba(255,255,255,0.08);
+    border-bottom: 1px solid #e2e8f0;
     padding-bottom: 0.35rem;
     margin-bottom: 0.35rem;
 }
 [data-testid="stSidebar"] .stRadio label {
-    color: #e2e8f0 !important;
+    color: var(--text-primary) !important;
     font-size: 0.82rem !important;
 }
 [data-testid="stSidebar"] .stButton > button {
     width: 100%;
-    background: rgba(255,255,255,0.08) !important;
-    color: #f1f5f9 !important;
-    border: 1px solid rgba(255,255,255,0.15) !important;
+    background: #ffffff !important;
+    color: var(--primary) !important;
+    border: 1px solid #d5e1ec !important;
     border-radius: var(--radius-sm) !important;
     font-size: 0.82rem !important;
     transition: var(--transition) !important;
 }
 [data-testid="stSidebar"] .stButton > button:hover {
-    background: rgba(255,215,0,0.15) !important;
-    border-color: rgba(255,215,0,0.4) !important;
-    color: var(--accent) !important;
+    background: #eef5fb !important;
+    border-color: #9db8d3 !important;
+    color: var(--primary-light) !important;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -280,12 +286,30 @@ h4 {
     font-size: 0.85rem !important;
     transition: var(--transition) !important;
     background: var(--surface) !important;
+    color: var(--text-primary) !important;
 }
 .stTextInput > div > div > input:focus,
 .stTextArea > div > div > textarea:focus {
     border-color: var(--primary-light) !important;
     box-shadow: 0 0 0 3px rgba(15,76,129,0.12) !important;
     outline: none !important;
+}
+.stTextInput input::placeholder,
+.stTextArea textarea::placeholder {
+    color: var(--text-muted) !important;
+    opacity: 1 !important;
+}
+.stTextInput input,
+.stTextArea textarea,
+.stNumberInput input,
+[data-testid="stSelectbox"] div,
+[data-baseweb="select"] > div,
+[data-baseweb="select"] input {
+    color: var(--text-primary) !important;
+    -webkit-text-fill-color: var(--text-primary) !important;
+}
+[data-baseweb="select"] {
+    background: var(--surface) !important;
 }
 .stTextInput > label,
 .stTextArea > label,

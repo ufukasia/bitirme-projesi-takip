@@ -85,30 +85,30 @@ def render_leader_panel(
 
     st.markdown(
         f"""
-        <div style="background:linear-gradient(135deg,#0a2342 0%,#1a3a6b 100%);
-                    border-radius:14px;padding:1.2rem 1.6rem;margin-bottom:1rem;
-                    box-shadow:0 4px 16px rgba(10,35,66,0.18);">
+        <div style="background:linear-gradient(135deg,#ffffff 0%,#eef5fb 100%);
+                    border:1px solid #dbe5ef;border-radius:14px;padding:1.2rem 1.6rem;margin-bottom:1rem;
+                    box-shadow:0 4px 16px rgba(15,23,42,0.08);">
             <div style="display:flex;align-items:flex-start;gap:1rem;">
-                <div style="width:52px;height:52px;background:rgba(255,215,0,0.2);border:2px solid #ffd700;
+                <div style="width:52px;height:52px;background:#dbeafe;border:2px solid #93c5fd;
                             border-radius:50%;display:flex;align-items:center;justify-content:center;
                             font-size:1.5rem;flex-shrink:0;">👑</div>
                 <div style="flex:1;">
-                    <div style="color:#ffd700;font-size:0.68rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;">{_t('Grup Lider Paneli')}</div>
-                    <div style="color:#fff;font-size:1.2rem;font-weight:800;margin:0.1rem 0;">{leader_name}</div>
-                    <div style="color:#a8c8f0;font-size:0.75rem;">📁 {project_name}</div>
+                    <div style="color:#0f4c81;font-size:0.68rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;">{_t('Grup Lider Paneli')}</div>
+                    <div style="color:#0f172a;font-size:1.2rem;font-weight:800;margin:0.1rem 0;">{leader_name}</div>
+                    <div style="color:#64748b;font-size:0.75rem;">📁 {project_name}</div>
                 </div>
                 <div style="display:flex;gap:1.5rem;text-align:center;flex-shrink:0;">
                     <div>
-                        <div style="color:#ffd700;font-size:1.5rem;font-weight:900;line-height:1;">%{int(prj_pct)}</div>
-                        <div style="color:#a8c8f0;font-size:0.65rem;">{_t('Proje')}</div>
+                        <div style="color:#0f4c81;font-size:1.5rem;font-weight:900;line-height:1;">%{int(prj_pct)}</div>
+                        <div style="color:#64748b;font-size:0.65rem;">{_t('Proje')}</div>
                     </div>
                     <div>
-                        <div style="color:{'#ff6b6b' if overdue>0 else '#6bffb8'};font-size:1.5rem;font-weight:900;line-height:1;">{overdue}</div>
-                        <div style="color:#a8c8f0;font-size:0.65rem;">{_t('Geciken')}</div>
+                        <div style="color:{'#dc2626' if overdue>0 else '#16a34a'};font-size:1.5rem;font-weight:900;line-height:1;">{overdue}</div>
+                        <div style="color:#64748b;font-size:0.65rem;">{_t('Geciken')}</div>
                     </div>
                     <div>
-                        <div style="color:#90cdf4;font-size:1.5rem;font-weight:900;line-height:1;">{len(team_df)}</div>
-                        <div style="color:#a8c8f0;font-size:0.65rem;">{_t('Üye')}</div>
+                        <div style="color:#1d4ed8;font-size:1.5rem;font-weight:900;line-height:1;">{len(team_df)}</div>
+                        <div style="color:#64748b;font-size:0.65rem;">{_t('Üye')}</div>
                     </div>
                 </div>
             </div>
@@ -222,12 +222,12 @@ def render_leader_panel(
         f"""<div style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;
                         box-shadow:0 1px 4px rgba(0,0,0,.05);margin-bottom:.75rem;">
         <table style="width:100%;border-collapse:collapse;">
-        <thead><tr style="background:#0a2342;">
-        <th style="padding:.45rem .6rem;font-size:.7rem;color:#fff;text-align:left;letter-spacing:.05em;text-transform:uppercase;">{_t('Milestone')}</th>
-        <th style="padding:.45rem .6rem;font-size:.7rem;color:#fff;text-align:left;letter-spacing:.05em;text-transform:uppercase;">{_t('Görev')}</th>
-        <th style="padding:.45rem .6rem;font-size:.7rem;color:#fff;text-align:left;letter-spacing:.05em;text-transform:uppercase;">{_t('Sorumlu')}</th>
-        <th style="padding:.45rem .6rem;font-size:.7rem;color:#fff;text-align:left;letter-spacing:.05em;text-transform:uppercase;">{_t('Durum')}</th>
-        <th style="padding:.45rem .6rem;font-size:.7rem;color:#fff;text-align:left;letter-spacing:.05em;text-transform:uppercase;">{_t('Deadline')}</th>
+        <thead><tr style="background:#eaf2f9;">
+        <th style="padding:.45rem .6rem;font-size:.7rem;color:#0f4c81;text-align:left;letter-spacing:.05em;text-transform:uppercase;">{_t('Milestone')}</th>
+        <th style="padding:.45rem .6rem;font-size:.7rem;color:#0f4c81;text-align:left;letter-spacing:.05em;text-transform:uppercase;">{_t('Görev')}</th>
+        <th style="padding:.45rem .6rem;font-size:.7rem;color:#0f4c81;text-align:left;letter-spacing:.05em;text-transform:uppercase;">{_t('Sorumlu')}</th>
+        <th style="padding:.45rem .6rem;font-size:.7rem;color:#0f4c81;text-align:left;letter-spacing:.05em;text-transform:uppercase;">{_t('Durum')}</th>
+        <th style="padding:.45rem .6rem;font-size:.7rem;color:#0f4c81;text-align:left;letter-spacing:.05em;text-transform:uppercase;">{_t('Deadline')}</th>
         </tr></thead><tbody>{rows_html}</tbody></table></div>""",
         unsafe_allow_html=True,
     )
